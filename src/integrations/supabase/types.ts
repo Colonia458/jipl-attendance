@@ -81,7 +81,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      attendance_logs_public: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          event_id: string | null
+          full_name: string | null
+          id: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          event_id?: string | null
+          full_name?: string | null
+          id?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          event_id?: string | null
+          full_name?: string | null
+          id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
