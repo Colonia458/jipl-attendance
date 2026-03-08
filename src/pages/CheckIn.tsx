@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { CheckCircle2, ClipboardCheck, Loader2 } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Loader2, AlertCircle } from "lucide-react";
 
 const STORAGE_KEY = "checkin_user_data";
 
@@ -18,6 +19,9 @@ interface UserData {
 }
 
 const CheckIn = () => {
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get("event");
+
   const [form, setForm] = useState<UserData>({
     full_name: "",
     email: "",
@@ -28,7 +32,34 @@ const CheckIn = () => {
   const [loading, setLoading] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
   const [hasStored, setHasStored] = useState(false);
+  const [eventTitle, setEventTitle] = useState<string | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
+  const [eventError, setEventError] = useState(false);
 
+  // Load event info
+  useEffect(() => {
+    if (!eventId) {
+      setEventLoading(false);
+      setEventError(true);
+      return;
+    }
+    const fetchEvent = async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("title")
+        .eq("id", eventId)
+        .single();
+      if (error || !data) {
+        setEventError(true);
+      } else {
+        setEventTitle(data.title);
+      }
+      setEventLoading(false);
+    };
+    fetchEvent();
+  }, [eventId]);
+
+  // Load stored user data
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -68,12 +99,19 @@ const CheckIn = () => {
         phone_number: phone_number.trim(),
         job_title: job_title.trim(),
         company: company.trim(),
+        event_id: eventId,
       };
 
       const { error } = await supabase.from("attendance_logs").insert(payload);
       if (error) throw error;
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        full_name: payload.full_name,
+        email: payload.email,
+        phone_number: payload.phone_number,
+        job_title: payload.job_title,
+        company: payload.company,
+      }));
       setCheckedIn(true);
       toast.success("You're checked in!");
     } catch (err: any) {
@@ -83,6 +121,30 @@ const CheckIn = () => {
       setLoading(false);
     }
   };
+
+  if (eventLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (eventError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md text-center glass-card">
+          <CardContent className="pt-10 pb-10 flex flex-col items-center gap-4">
+            <AlertCircle className="w-14 h-14 text-destructive" />
+            <h2 className="text-xl font-bold">Invalid Event</h2>
+            <p className="text-muted-foreground">
+              This check-in link is invalid or the event no longer exists. Please scan a valid QR code.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (checkedIn) {
     return (
@@ -94,13 +156,9 @@ const CheckIn = () => {
             </div>
             <h2 className="text-2xl font-bold">You're Checked In!</h2>
             <p className="text-muted-foreground">
-              Thank you, {form.full_name}. Your attendance has been recorded.
+              Thank you, {form.full_name}. Your attendance for <strong>{eventTitle}</strong> has been recorded.
             </p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => setCheckedIn(false)}
-            >
+            <Button variant="outline" className="mt-4" onClick={() => setCheckedIn(false)}>
               Done
             </Button>
           </CardContent>
@@ -116,7 +174,7 @@ const CheckIn = () => {
           <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-2">
             <ClipboardCheck className="w-7 h-7 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Event Check-in</CardTitle>
+          <CardTitle className="text-2xl font-bold">Check-in for {eventTitle}</CardTitle>
           <CardDescription>
             {hasStored
               ? "Welcome back! Confirm your details to check in."

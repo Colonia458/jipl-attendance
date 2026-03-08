@@ -19,6 +19,7 @@ export type Database = {
           company: string
           created_at: string
           email: string
+          event_id: string | null
           full_name: string
           id: string
           job_title: string
@@ -28,6 +29,7 @@ export type Database = {
           company: string
           created_at?: string
           email: string
+          event_id?: string | null
           full_name: string
           id?: string
           job_title: string
@@ -37,10 +39,43 @@ export type Database = {
           company?: string
           created_at?: string
           email?: string
+          event_id?: string | null
           full_name?: string
           id?: string
           job_title?: string
           phone_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          title?: string
         }
         Relationships: []
       }

@@ -3,14 +3,24 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Download, Trash2, LogOut, QrCode, Users, Loader2, Search } from "lucide-react";
+import { Download, Trash2, LogOut, QrCode, Users, Loader2, Search, Plus, Calendar, Eye } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { format, isToday } from "date-fns";
+
+interface EventRecord {
+  id: string;
+  title: string;
+  description: string | null;
+  date: string;
+  created_at: string;
+}
 
 interface LogRecord {
   id: string;
@@ -20,22 +30,32 @@ interface LogRecord {
   job_title: string;
   company: string;
   created_at: string;
+  event_id: string | null;
 }
 
 const AdminDashboard = () => {
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
   const [records, setRecords] = useState<LogRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clearing, setClearing] = useState(false);
+  const [logsLoading, setLogsLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [clearing, setClearing] = useState(false);
   const navigate = useNavigate();
 
-  const checkInUrl = `${window.location.origin}/`;
+  // New event form
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newDate, setNewDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [creating, setCreating] = useState(false);
+
+  const checkInUrl = (eventId: string) => `${window.location.origin}/checkin?event=${eventId}`;
 
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/admin"); return; }
-      fetchRecords();
+      fetchEvents();
     };
     init();
 
@@ -45,16 +65,55 @@ const AdminDashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const fetchRecords = async () => {
+  const fetchEvents = async () => {
     setLoading(true);
+    const { data, error } = await supabase
+      .from("events")
+      .select("*")
+      .order("date", { ascending: false });
+    if (error) { toast.error("Failed to fetch events"); console.error(error); }
+    else setEvents(data || []);
+    setLoading(false);
+  };
+
+  const fetchLogs = async (eventId: string) => {
+    setLogsLoading(true);
     const { data, error } = await supabase
       .from("attendance_logs")
       .select("*")
+      .eq("event_id", eventId)
       .order("created_at", { ascending: false });
-
-    if (error) { toast.error("Failed to fetch records"); console.error(error); }
+    if (error) { toast.error("Failed to fetch logs"); console.error(error); }
     else setRecords(data || []);
-    setLoading(false);
+    setLogsLoading(false);
+  };
+
+  const handleSelectEvent = (event: EventRecord) => {
+    setSelectedEvent(event);
+    setSearch("");
+    fetchLogs(event.id);
+  };
+
+  const handleCreateEvent = async () => {
+    if (!newTitle.trim() || !newDate) {
+      toast.error("Title and date are required");
+      return;
+    }
+    setCreating(true);
+    const { error } = await supabase.from("events").insert({
+      title: newTitle.trim(),
+      description: newDesc.trim() || null,
+      date: newDate,
+    });
+    if (error) { toast.error("Failed to create event"); console.error(error); }
+    else {
+      toast.success("Event created!");
+      setNewTitle("");
+      setNewDesc("");
+      setNewDate(format(new Date(), "yyyy-MM-dd"));
+      fetchEvents();
+    }
+    setCreating(false);
   };
 
   const todayCount = useMemo(() => records.filter((r) => isToday(new Date(r.created_at))).length, [records]);
@@ -71,29 +130,38 @@ const AdminDashboard = () => {
   }, [records, search]);
 
   const handleDownloadCSV = () => {
-    if (filtered.length === 0) { toast.error("No records to export"); return; }
-    const headers = ["Full Name", "Email", "Phone", "Job Title", "Company", "Checked In"];
+    if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
+    const headers = ["Timestamp", "Event Name", "Full Name", "Email", "Phone", "Job Title", "Company"];
     const rows = [
       headers.join(","),
       ...filtered.map((r) =>
-        [`"${r.full_name}"`, `"${r.email}"`, `"${r.phone_number}"`, `"${r.job_title}"`, `"${r.company}"`, `"${format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss")}"`].join(",")
+        [
+          `"${format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss")}"`,
+          `"${selectedEvent.title}"`,
+          `"${r.full_name}"`,
+          `"${r.email}"`,
+          `"${r.phone_number}"`,
+          `"${r.job_title}"`,
+          `"${r.company}"`,
+        ].join(",")
       ),
     ];
     const blob = new Blob([rows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `attendance_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.download = `${selectedEvent.title.replace(/\s+/g, "_")}_${selectedEvent.date}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV downloaded");
   };
 
-  const handleClearAll = async () => {
+  const handleClearEventLogs = async () => {
+    if (!selectedEvent) return;
     setClearing(true);
-    const { error } = await supabase.from("attendance_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    const { error } = await supabase.from("attendance_logs").delete().eq("event_id", selectedEvent.id);
     if (error) { toast.error("Failed to clear records"); console.error(error); }
-    else { setRecords([]); toast.success("All records cleared"); }
+    else { setRecords([]); toast.success("Records cleared for this event"); }
     setClearing(false);
   };
 
@@ -105,9 +173,9 @@ const AdminDashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-primary" />
+              <Calendar className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="text-xl font-bold">Attendance Dashboard</h1>
+            <h1 className="text-xl font-bold">Event Dashboard</h1>
           </div>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="w-4 h-4 mr-2" /> Logout
@@ -116,106 +184,273 @@ const AdminDashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <Card className="glass-card">
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Today</CardTitle></CardHeader>
-            <CardContent><p className="text-3xl font-bold">{todayCount}</p></CardContent>
-          </Card>
-          <Card className="glass-card">
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle></CardHeader>
-            <CardContent><p className="text-3xl font-bold">{records.length}</p></CardContent>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="logs" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="logs">Attendance Logs</TabsTrigger>
-            <TabsTrigger value="qr">QR Code</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="logs" className="space-y-4">
-            {/* Actions */}
-            <div className="flex flex-wrap gap-3 items-center">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Search by name, email, company..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-              </div>
-              <Button variant="outline" onClick={handleDownloadCSV}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-2" /> Clear All</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Clear all records?</AlertDialogTitle>
-                    <AlertDialogDescription>This will permanently delete all {records.length} records.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClearAll} disabled={clearing}>{clearing ? "Clearing..." : "Yes, clear all"}</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button variant="secondary" size="sm" onClick={fetchRecords} className="ml-auto">Refresh</Button>
-            </div>
-
-            {/* Table */}
-            <Card className="glass-card overflow-hidden">
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                ) : filtered.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <Users className="w-10 h-10 mb-3 opacity-40" />
-                    <p>{search ? "No matching records" : "No attendance records yet"}</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead className="hidden md:table-cell">Phone</TableHead>
-                          <TableHead className="hidden lg:table-cell">Job Title</TableHead>
-                          <TableHead className="hidden lg:table-cell">Company</TableHead>
-                          <TableHead>Time</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filtered.map((r) => (
-                          <TableRow key={r.id}>
-                            <TableCell className="font-medium">{r.full_name}</TableCell>
-                            <TableCell>{r.email}</TableCell>
-                            <TableCell className="hidden md:table-cell">{r.phone_number}</TableCell>
-                            <TableCell className="hidden lg:table-cell">{r.job_title}</TableCell>
-                            <TableCell className="hidden lg:table-cell">{r.company}</TableCell>
-                            <TableCell className="whitespace-nowrap text-sm">{format(new Date(r.created_at), "MMM d, h:mm a")}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="qr">
-            <Card className="glass-card">
-              <CardHeader><CardTitle>Check-in QR Code</CardTitle></CardHeader>
-              <CardContent className="flex flex-col items-center gap-4">
-                <div className="p-6 bg-white rounded-xl border"><QRCodeSVG value={checkInUrl} size={220} /></div>
-                <p className="text-sm text-muted-foreground text-center break-all">{checkInUrl}</p>
-                <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(checkInUrl); toast.success("URL copied!"); }}>Copy URL</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Event selection or detail view */}
+        {!selectedEvent ? (
+          <EventListView
+            events={events}
+            loading={loading}
+            onSelect={handleSelectEvent}
+            onRefresh={fetchEvents}
+            newTitle={newTitle}
+            setNewTitle={setNewTitle}
+            newDesc={newDesc}
+            setNewDesc={setNewDesc}
+            newDate={newDate}
+            setNewDate={setNewDate}
+            creating={creating}
+            onCreate={handleCreateEvent}
+            checkInUrl={checkInUrl}
+          />
+        ) : (
+          <EventDetailView
+            event={selectedEvent}
+            records={filtered}
+            logsLoading={logsLoading}
+            todayCount={todayCount}
+            totalCount={records.length}
+            search={search}
+            setSearch={setSearch}
+            onBack={() => { setSelectedEvent(null); setRecords([]); }}
+            onExport={handleDownloadCSV}
+            onClear={handleClearEventLogs}
+            clearing={clearing}
+            onRefresh={() => fetchLogs(selectedEvent.id)}
+            checkInUrl={checkInUrl(selectedEvent.id)}
+          />
+        )}
       </main>
     </div>
   );
 };
+
+/* ───── Event List ───── */
+
+interface EventListViewProps {
+  events: EventRecord[];
+  loading: boolean;
+  onSelect: (e: EventRecord) => void;
+  onRefresh: () => void;
+  newTitle: string;
+  setNewTitle: (v: string) => void;
+  newDesc: string;
+  setNewDesc: (v: string) => void;
+  newDate: string;
+  setNewDate: (v: string) => void;
+  creating: boolean;
+  onCreate: () => void;
+  checkInUrl: (id: string) => string;
+}
+
+const EventListView = ({
+  events, loading, onSelect, onRefresh,
+  newTitle, setNewTitle, newDesc, setNewDesc, newDate, setNewDate, creating, onCreate,
+  checkInUrl,
+}: EventListViewProps) => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <h2 className="text-lg font-semibold">All Events</h2>
+      <div className="flex gap-2">
+        <Button variant="secondary" size="sm" onClick={onRefresh}>Refresh</Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus className="w-4 h-4 mr-2" /> New Event</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Event</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Title</Label>
+                <Input placeholder="Team Standup" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description (optional)</Label>
+                <Input placeholder="Weekly sync meeting" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Date</Label>
+                <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button onClick={onCreate} disabled={creating}>
+                  {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Create
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+
+    {loading ? (
+      <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+    ) : events.length === 0 ? (
+      <Card className="glass-card">
+        <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <Calendar className="w-10 h-10 mb-3 opacity-40" />
+          <p>No events yet. Create your first event to get started.</p>
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {events.map((ev) => (
+          <Card key={ev.id} className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => onSelect(ev)}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{ev.title}</CardTitle>
+              <CardDescription>{format(new Date(ev.date), "MMMM d, yyyy")}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onSelect(ev); }}>
+                <Eye className="w-4 h-4 mr-1" /> View Logs
+              </Button>
+              <Button variant="ghost" size="icon" onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(checkInUrl(ev.id));
+                toast.success("Check-in URL copied!");
+              }}>
+                <QrCode className="w-4 h-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+/* ───── Event Detail / Logs ───── */
+
+interface EventDetailViewProps {
+  event: EventRecord;
+  records: LogRecord[];
+  logsLoading: boolean;
+  todayCount: number;
+  totalCount: number;
+  search: string;
+  setSearch: (v: string) => void;
+  onBack: () => void;
+  onExport: () => void;
+  onClear: () => void;
+  clearing: boolean;
+  onRefresh: () => void;
+  checkInUrl: string;
+}
+
+const EventDetailView = ({
+  event, records, logsLoading, todayCount, totalCount,
+  search, setSearch, onBack, onExport, onClear, clearing, onRefresh, checkInUrl,
+}: EventDetailViewProps) => (
+  <div className="space-y-6">
+    <div className="flex items-center gap-3">
+      <Button variant="ghost" size="sm" onClick={onBack}>← Back</Button>
+      <div>
+        <h2 className="text-lg font-semibold">{event.title}</h2>
+        <p className="text-sm text-muted-foreground">{format(new Date(event.date), "MMMM d, yyyy")}</p>
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <Card className="glass-card">
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Today</CardTitle></CardHeader>
+        <CardContent><p className="text-3xl font-bold">{todayCount}</p></CardContent>
+      </Card>
+      <Card className="glass-card">
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle></CardHeader>
+        <CardContent><p className="text-3xl font-bold">{totalCount}</p></CardContent>
+      </Card>
+    </div>
+
+    <Tabs defaultValue="logs" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="logs">Attendance Logs</TabsTrigger>
+        <TabsTrigger value="qr">QR Code</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="logs" className="space-y-4">
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search by name, email, company..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <Button variant="outline" onClick={onExport}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-2" /> Clear All</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear all records for this event?</AlertDialogTitle>
+                <AlertDialogDescription>This will permanently delete all {totalCount} records for "{event.title}".</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onClear} disabled={clearing}>{clearing ? "Clearing..." : "Yes, clear all"}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button variant="secondary" size="sm" onClick={onRefresh} className="ml-auto">Refresh</Button>
+        </div>
+
+        <Card className="glass-card overflow-hidden">
+          <CardContent className="p-0">
+            {logsLoading ? (
+              <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            ) : records.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Users className="w-10 h-10 mb-3 opacity-40" />
+                <p>{search ? "No matching records" : "No attendance records yet"}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead className="hidden md:table-cell">Phone</TableHead>
+                      <TableHead className="hidden lg:table-cell">Job Title</TableHead>
+                      <TableHead className="hidden lg:table-cell">Company</TableHead>
+                      <TableHead>Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {records.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.full_name}</TableCell>
+                        <TableCell>{r.email}</TableCell>
+                        <TableCell className="hidden md:table-cell">{r.phone_number}</TableCell>
+                        <TableCell className="hidden lg:table-cell">{r.job_title}</TableCell>
+                        <TableCell className="hidden lg:table-cell">{r.company}</TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">{format(new Date(r.created_at), "MMM d, h:mm a")}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="qr">
+        <Card className="glass-card">
+          <CardHeader><CardTitle>Check-in QR Code</CardTitle></CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            <div className="p-6 bg-white rounded-xl border"><QRCodeSVG value={checkInUrl} size={220} /></div>
+            <p className="text-sm text-muted-foreground text-center break-all">{checkInUrl}</p>
+            <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(checkInUrl); toast.success("URL copied!"); }}>Copy URL</Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  </div>
+);
 
 export default AdminDashboard;
