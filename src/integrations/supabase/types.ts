@@ -14,27 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
-      attendance: {
+      attendance_logs: {
         Row: {
-          attendee_name: string
-          device_info: string | null
+          company: string
+          created_at: string
           email: string
+          full_name: string
           id: string
-          timestamp: string
+          job_title: string
+          phone_number: string
         }
         Insert: {
-          attendee_name: string
-          device_info?: string | null
+          company: string
+          created_at?: string
           email: string
+          full_name: string
           id?: string
-          timestamp?: string
+          job_title: string
+          phone_number: string
         }
         Update: {
-          attendee_name?: string
-          device_info?: string | null
+          company?: string
+          created_at?: string
           email?: string
+          full_name?: string
           id?: string
-          timestamp?: string
+          job_title?: string
+          phone_number?: string
         }
         Relationships: []
       }
