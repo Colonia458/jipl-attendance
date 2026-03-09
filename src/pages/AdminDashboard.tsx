@@ -166,7 +166,14 @@ const AdminDashboard = () => {
     else { toast.success("Event deleted"); if (selectedEvent?.id === deleteEvent.id) { setSelectedEvent(null); setRecords([]); } fetchEvents(); }
   }, [deleteEvent, selectedEvent]);
 
-  const handleUpdateEvent = async (id: string, data: { title: string; description: string | null; date: string }) => {
+  const handleUpdateEvent = async (id: string, data: {
+    title: string;
+    description: string | null;
+    date: string;
+    venue: string | null;
+    start_time: string | null;
+    end_time: string | null;
+  }) => {
     const { error } = await supabase.from("events").update(data).eq("id", id);
     if (error) { toast.error("Failed to update event"); console.error(error); }
     else {
