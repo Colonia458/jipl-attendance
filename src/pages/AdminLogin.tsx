@@ -21,8 +21,16 @@ const AdminLogin = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      // Log the login activity
+      if (data.user) {
+        await supabase.from("admin_login_logs").insert({
+          user_id: data.user.id,
+          email: data.user.email || email,
+          user_agent: navigator.userAgent,
+        });
+      }
       navigate("/admin/dashboard");
     } catch (err: any) {
       toast.error(err.message || "Login failed");
