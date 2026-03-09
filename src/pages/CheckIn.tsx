@@ -230,6 +230,7 @@ const CheckIn = () => {
             <CardDescription>
               {isEditing ? "Update your information below" : hasStored ? "Welcome back! Confirm your details to check in." : "Enter your details to mark your attendance"}
             </CardDescription>
+            {!isEditing && <EventInfoBanner date={eventDate} venue={eventVenue} startTime={eventStartTime} endTime={eventEndTime} />}
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
