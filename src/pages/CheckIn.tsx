@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { CheckCircle2, ClipboardCheck, Loader2, AlertCircle, Pencil } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Loader2, AlertCircle, Pencil, MapPin, Clock } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 
 const STORAGE_KEY = "checkin_user_data";
