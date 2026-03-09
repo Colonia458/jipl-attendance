@@ -213,18 +213,23 @@ const AdminDashboard = () => {
     const pdf = new jsPDF(orientation, "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
 
+    // Logo
+    if (logoBase64) {
+      try { pdf.addImage(logoBase64, "PNG", 14, 4, 18, 18); } catch {}
+    }
+
     // JKUAT branding header
     pdf.setFontSize(10);
     pdf.setTextColor(154, 196, 75);
-    pdf.text("JKUAT Industrial Park", 14, 12);
+    pdf.text("JKUAT Industrial Park", logoBase64 ? 35 : 14, 12);
     pdf.setFontSize(8);
     pdf.setTextColor(150);
-    pdf.text("Meeting Attendance System", 14, 17);
+    pdf.text("Meeting Attendance System", logoBase64 ? 35 : 14, 17);
 
     // Line separator
     pdf.setDrawColor(154, 196, 75);
     pdf.setLineWidth(0.5);
-    pdf.line(14, 20, pageWidth - 14, 20);
+    pdf.line(14, 23, pageWidth - 14, 23);
 
     pdf.setTextColor(35, 31, 31);
     pdf.setFontSize(18);
