@@ -119,7 +119,7 @@ const EventsListView = ({
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     <div className="space-y-1.5">
                       <Label>Start Time</Label>
                       <TimePicker value={newStartTime} onChange={setNewStartTime} />
