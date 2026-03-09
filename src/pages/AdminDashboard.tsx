@@ -16,6 +16,7 @@ import { Download, Trash2, LogOut, QrCode, Users, Loader2, Search, Plus, Calenda
 import { QRCodeSVG } from "qrcode.react";
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import QRActionsModal from "@/components/QRActionsModal";
