@@ -13,6 +13,9 @@ interface QRActionsModalProps {
   onOpenChange: (open: boolean) => void;
   url: string;
   eventTitle: string;
+  venue?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
 }
 
 const QRActionsModal = ({ open, onOpenChange, url, eventTitle }: QRActionsModalProps) => {
