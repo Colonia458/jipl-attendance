@@ -19,8 +19,8 @@ interface EventsListViewProps {
   loading: boolean;
   onSelect: (event: EventRecord) => void;
   onRefresh: () => void;
-  onEdit: (event: EventRecord) => void;
-  onDelete: (event: EventRecord) => void;
+  onEdit?: (event: EventRecord) => void;
+  onDelete?: (event: EventRecord) => void;
   onQr: (event: EventRecord) => void;
   liveUrl: (eventId: string) => string;
   newTitle: string;
@@ -31,34 +31,38 @@ interface EventsListViewProps {
   setNewDate: (v: string) => void;
   creating: boolean;
   handleCreateEvent: () => void;
+  canCreateEvents?: boolean;
 }
 
 const EventsListView = ({
   events, loading, onSelect, onRefresh, onEdit, onDelete, onQr, liveUrl,
   newTitle, setNewTitle, newDesc, setNewDesc, newDate, setNewDate, creating, handleCreateEvent,
+  canCreateEvents = true,
 }: EventsListViewProps) => (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <h2 className="text-lg font-semibold">All Events</h2>
       <div className="flex gap-2">
         <Button variant="secondary" size="sm" onClick={onRefresh}>Refresh</Button>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" /> New Event</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Create Event</DialogTitle></DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-1.5"><Label>Title</Label><Input placeholder="Team Standup" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>Description (optional)</Label><Input placeholder="Weekly sync meeting" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} /></div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-              <DialogClose asChild><Button onClick={handleCreateEvent} disabled={creating}>{creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Create</Button></DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {canCreateEvents && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="w-4 h-4 mr-2" /> New Event</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Create Event</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5"><Label>Title</Label><Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Description (optional)</Label><Input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} /></div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                <DialogClose asChild><Button onClick={handleCreateEvent} disabled={creating}>{creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Create</Button></DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
 
@@ -84,18 +88,22 @@ const EventsListView = ({
                 <Eye className="w-4 h-4 mr-1" /> Logs
               </Button>
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" title="Edit Event" onClick={(e) => { e.stopPropagation(); onEdit(ev); }}>
-                  <Pencil className="w-4 h-4" />
-                </Button>
+                {onEdit && (
+                  <Button variant="ghost" size="icon" title="Edit Event" onClick={(e) => { e.stopPropagation(); onEdit(ev); }}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" title="QR Actions" onClick={(e) => { e.stopPropagation(); onQr(ev); }}>
                   <QrCode className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="icon" title="Live Dashboard" onClick={(e) => { e.stopPropagation(); window.open(liveUrl(ev.id), "_blank"); }}>
                   <Radio className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" title="Delete Event" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(ev); }}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                {onDelete && (
+                  <Button variant="ghost" size="icon" title="Delete Event" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(ev); }}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
