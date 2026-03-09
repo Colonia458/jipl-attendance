@@ -233,13 +233,13 @@ const AdminDashboard = () => {
 
     pdf.setTextColor(35, 31, 31);
     pdf.setFontSize(18);
-    pdf.text(selectedEvent.title, 14, 30);
+    pdf.text(selectedEvent.title, 14, 33);
     pdf.setFontSize(11);
     pdf.setTextColor(100);
-    pdf.text(`Date: ${format(new Date(selectedEvent.date), "MMMM d, yyyy")}  |  Total: ${filtered.length} attendees`, 14, 38);
+    pdf.text(`Date: ${format(new Date(selectedEvent.date), "MMMM d, yyyy")}  |  Total: ${filtered.length} attendees`, 14, 41);
 
     autoTable(pdf, {
-      startY: 44,
+      startY: 47,
       head: [["#", "Full Name", "Email", "Phone", "Job Title", "Company", "Checked In"]],
       body: filtered.map((r, i) => [i + 1, r.full_name, r.email, r.phone_number, r.job_title, r.company, format(new Date(r.created_at), "MMM d, h:mm a")]),
       styles: { fontSize: 9 },
