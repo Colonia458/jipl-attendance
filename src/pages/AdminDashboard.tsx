@@ -141,9 +141,21 @@ const AdminDashboard = () => {
   const handleCreateEvent = async () => {
     if (!newTitle.trim() || !newDate) { toast.error("Title and date are required"); return; }
     setCreating(true);
-    const { error } = await supabase.from("events").insert({ title: newTitle.trim(), description: newDesc.trim() || null, date: newDate });
+    const { error } = await supabase.from("events").insert({
+      title: newTitle.trim(),
+      description: newDesc.trim() || null,
+      date: newDate,
+      venue: newVenue.trim() || null,
+      start_time: newStartTime || null,
+      end_time: newEndTime || null,
+    });
     if (error) { toast.error("Failed to create event"); console.error(error); }
-    else { toast.success("Event created!"); setNewTitle(""); setNewDesc(""); setNewDate(format(new Date(), "yyyy-MM-dd")); fetchEvents(); }
+    else {
+      toast.success("Event created!");
+      setNewTitle(""); setNewDesc(""); setNewDate(format(new Date(), "yyyy-MM-dd"));
+      setNewVenue(""); setNewStartTime(""); setNewEndTime("");
+      fetchEvents();
+    }
     setCreating(false);
   };
 
