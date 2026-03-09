@@ -27,6 +27,7 @@ import EditRecordDialog from "@/components/EditRecordDialog";
 import ManageAdmins from "@/components/ManageAdmins";
 import EventsListView from "@/components/EventsListView";
 import AppHeader from "@/components/AppHeader";
+import AdminActivityLog from "@/components/AdminActivityLog";
 
 interface EventRecord {
   id: string;
@@ -360,6 +361,7 @@ const AdminDashboard = () => {
               <TabsList>
                 <TabsTrigger value="events">Events</TabsTrigger>
                 <TabsTrigger value="admins">Manage Admins</TabsTrigger>
+                <TabsTrigger value="activity">Activity Log</TabsTrigger>
               </TabsList>
               <TabsContent value="events">
                 <EventsListView
@@ -390,6 +392,9 @@ const AdminDashboard = () => {
               </TabsContent>
               <TabsContent value="admins">
                 <ManageAdmins />
+              </TabsContent>
+              <TabsContent value="activity">
+                <AdminActivityLog />
               </TabsContent>
             </Tabs>
           ) : (
