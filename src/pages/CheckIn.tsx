@@ -12,6 +12,38 @@ import AppHeader from "@/components/AppHeader";
 
 const STORAGE_KEY = "checkin_user_data";
 
+const formatTime12 = (time: string | null | undefined) => {
+  if (!time) return null;
+  const [hours, minutes] = time.split(":");
+  const h = parseInt(hours);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${minutes} ${ampm}`;
+};
+
+const EventInfoBanner = ({ date, venue, startTime, endTime }: { date: string | null; venue: string | null; startTime: string | null; endTime: string | null }) => {
+  if (!venue && !startTime && !date) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+      {date && (
+        <span className="flex items-center gap-1">
+          📅 {format(new Date(date + "T00:00:00"), "MMMM d, yyyy")}
+        </span>
+      )}
+      {venue && (
+        <span className="flex items-center gap-1">
+          <MapPin className="w-3.5 h-3.5" /> {venue}
+        </span>
+      )}
+      {startTime && (
+        <span className="flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5" /> {formatTime12(startTime)}{endTime ? ` – ${formatTime12(endTime)}` : ""}
+        </span>
+      )}
+    </div>
+  );
+};
+
 interface UserData {
   full_name: string;
   email: string;
