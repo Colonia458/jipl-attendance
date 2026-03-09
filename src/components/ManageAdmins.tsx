@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Shield, ShieldCheck } from "lucide-react";
+import { Loader2, Plus, Trash2, Shield, ShieldCheck, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface AdminUser {
@@ -19,14 +20,25 @@ interface AdminUser {
   created_at: string;
 }
 
+const ALL_PERMISSIONS = [
+  { key: "export_data", label: "Export XLSX & PDF Reports" },
+  { key: "create_events", label: "Create & Edit Events" },
+  { key: "manage_attendance", label: "Manage Attendance Logs" },
+];
+
 const ManageAdmins = () => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [adminPermissions, setAdminPermissions] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "super_admin">("admin");
+  const [newPermissions, setNewPermissions] = useState<string[]>(ALL_PERMISSIONS.map(p => p.key));
   const [creating, setCreating] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [permDialogAdmin, setPermDialogAdmin] = useState<AdminUser | null>(null);
+  const [editPerms, setEditPerms] = useState<string[]>([]);
+  const [savingPerms, setSavingPerms] = useState(false);
 
   useEffect(() => {
     fetchAdmins();
@@ -42,25 +54,34 @@ const ManageAdmins = () => {
       toast.error("Failed to load admins");
       console.error(error);
     } else {
-      setAdmins((data as AdminUser[]) || []);
+      const adminList = (data as AdminUser[]) || [];
+      setAdmins(adminList);
+      // Fetch permissions for all admins
+      const allUserIds = adminList.filter(a => a.role === "admin").map(a => a.user_id);
+      if (allUserIds.length > 0) {
+        const { data: perms } = await supabase
+          .from("admin_permissions" as any)
+          .select("user_id, permission")
+          .in("user_id", allUserIds);
+        const permMap: Record<string, string[]> = {};
+        (perms as any[] || []).forEach((p: any) => {
+          if (!permMap[p.user_id]) permMap[p.user_id] = [];
+          permMap[p.user_id].push(p.permission);
+        });
+        setAdminPermissions(permMap);
+      }
     }
     setLoading(false);
   };
 
   const handleCreate = async () => {
-    if (!email || !password) {
-      toast.error("Email and password are required");
-      return;
-    }
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
+    if (!email || !password) { toast.error("Email and password are required"); return; }
+    if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     setCreating(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("manage-admin", {
-        body: { action: "create", email, password, role },
+        body: { action: "create", email, password, role, permissions: role === "admin" ? newPermissions : [] },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
@@ -68,6 +89,7 @@ const ManageAdmins = () => {
       setEmail("");
       setPassword("");
       setRole("admin");
+      setNewPermissions(ALL_PERMISSIONS.map(p => p.key));
       fetchAdmins();
     } catch (err: any) {
       toast.error(err.message || "Failed to create admin");
@@ -88,6 +110,31 @@ const ManageAdmins = () => {
     } catch (err: any) {
       toast.error(err.message || "Failed to remove admin");
     }
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permDialogAdmin) return;
+    setSavingPerms(true);
+    try {
+      // Delete existing permissions
+      await supabase.from("admin_permissions" as any).delete().eq("user_id", permDialogAdmin.user_id);
+      // Insert new permissions
+      if (editPerms.length > 0) {
+        const rows = editPerms.map(p => ({ user_id: permDialogAdmin.user_id, permission: p }));
+        const { error } = await supabase.from("admin_permissions" as any).insert(rows);
+        if (error) throw error;
+      }
+      toast.success("Permissions updated");
+      setPermDialogAdmin(null);
+      fetchAdmins();
+    } catch (err: any) {
+      toast.error("Failed to update permissions");
+    }
+    setSavingPerms(false);
+  };
+
+  const togglePermission = (list: string[], key: string) => {
+    return list.includes(key) ? list.filter(p => p !== key) : [...list, key];
   };
 
   return (
@@ -119,6 +166,21 @@ const ManageAdmins = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {role === "admin" && (
+                <div className="space-y-2">
+                  <Label>Permissions</Label>
+                  {ALL_PERMISSIONS.map(p => (
+                    <div key={p.key} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`new-${p.key}`}
+                        checked={newPermissions.includes(p.key)}
+                        onCheckedChange={() => setNewPermissions(prev => togglePermission(prev, p.key))}
+                      />
+                      <label htmlFor={`new-${p.key}`} className="text-sm">{p.label}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <DialogFooter>
               <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
@@ -145,7 +207,8 @@ const ManageAdmins = () => {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead className="w-24">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -162,25 +225,48 @@ const ManageAdmins = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {a.user_id !== currentUserId && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remove admin?</AlertDialogTitle>
-                              <AlertDialogDescription>This will remove {a.email} and delete their account.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(a.user_id)}>Remove</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      {a.role === "super_admin" ? (
+                        <span className="text-xs text-muted-foreground">Full access</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {(adminPermissions[a.user_id] || []).length === 0 ? (
+                            <span className="text-xs text-muted-foreground">No permissions</span>
+                          ) : (
+                            (adminPermissions[a.user_id] || []).map(p => {
+                              const perm = ALL_PERMISSIONS.find(ap => ap.key === p);
+                              return perm ? <Badge key={p} variant="outline" className="text-xs">{perm.label}</Badge> : null;
+                            })
+                          )}
+                        </div>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {a.role === "admin" && a.user_id !== currentUserId && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit Permissions" onClick={() => { setPermDialogAdmin(a); setEditPerms(adminPermissions[a.user_id] || []); }}>
+                            <Settings className="w-3 h-3" />
+                          </Button>
+                        )}
+                        {a.user_id !== currentUserId && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove admin?</AlertDialogTitle>
+                                <AlertDialogDescription>This will remove {a.email} and delete their account.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(a.user_id)}>Remove</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -189,6 +275,31 @@ const ManageAdmins = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Permissions Dialog */}
+      <Dialog open={!!permDialogAdmin} onOpenChange={(v) => { if (!v) setPermDialogAdmin(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Edit Permissions — {permDialogAdmin?.email}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            {ALL_PERMISSIONS.map(p => (
+              <div key={p.key} className="flex items-center gap-2">
+                <Checkbox
+                  id={`edit-${p.key}`}
+                  checked={editPerms.includes(p.key)}
+                  onCheckedChange={() => setEditPerms(prev => togglePermission(prev, p.key))}
+                />
+                <label htmlFor={`edit-${p.key}`} className="text-sm">{p.label}</label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPermDialogAdmin(null)}>Cancel</Button>
+            <Button onClick={handleSavePermissions} disabled={savingPerms}>
+              {savingPerms ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
