@@ -190,9 +190,9 @@ const AdminDashboard = () => {
     toast.success("XLSX downloaded");
   };
 
-  const handlePrintPDF = () => {
+  const handlePrintPDF = (orientation: "portrait" | "landscape" = "landscape") => {
     if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
-    const pdf = new jsPDF("landscape", "mm", "a4");
+    const pdf = new jsPDF(orientation, "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
 
     // JKUAT branding header
