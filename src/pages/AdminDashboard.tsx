@@ -223,6 +223,54 @@ const AdminDashboard = () => {
       headStyles: { fillColor: [154, 196, 75], textColor: [35, 31, 31] },
     });
 
+    // Sign-off footer section
+    const finalY = (pdf as any).lastAutoTable?.finalY || 150;
+    const footerY = finalY + 16;
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Add new page if not enough space for footer
+    const neededSpace = 70;
+    let yPos = footerY;
+    if (footerY + neededSpace > pageHeight - 14) {
+      pdf.addPage();
+      yPos = 20;
+    }
+
+    // Notes section
+    pdf.setDrawColor(200);
+    pdf.setLineWidth(0.3);
+    pdf.setFontSize(10);
+    pdf.setTextColor(80);
+    pdf.text("Notes / Remarks:", 14, yPos);
+    yPos += 4;
+    // Draw lined area for notes
+    for (let i = 0; i < 4; i++) {
+      yPos += 8;
+      pdf.line(14, yPos, pageWidth - 14, yPos);
+    }
+
+    // Signature blocks
+    yPos += 16;
+    const colWidth = (pageWidth - 28) / 2;
+
+    pdf.setFontSize(9);
+    pdf.setTextColor(100);
+
+    // Left signature
+    pdf.text("Prepared by:", 14, yPos);
+    pdf.line(14, yPos + 14, 14 + colWidth - 10, yPos + 14);
+    pdf.setFontSize(8);
+    pdf.text("Name & Signature", 14, yPos + 19);
+    pdf.text("Date: _______________", 14, yPos + 25);
+
+    // Right signature
+    pdf.setFontSize(9);
+    pdf.text("Approved by:", 14 + colWidth, yPos);
+    pdf.line(14 + colWidth, yPos + 14, 14 + colWidth * 2 - 10, yPos + 14);
+    pdf.setFontSize(8);
+    pdf.text("Name & Signature", 14 + colWidth, yPos + 19);
+    pdf.text("Date: _______________", 14 + colWidth, yPos + 25);
+
     pdf.save(`${selectedEvent.title.replace(/\s+/g, "_")}_Report.pdf`);
     toast.success("PDF report downloaded");
   };
