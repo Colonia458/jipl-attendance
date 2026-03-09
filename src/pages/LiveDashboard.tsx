@@ -33,13 +33,17 @@ const LiveDashboard = () => {
 
   useEffect(() => {
     if (!eventId || error) return;
-    const fetchInitial = async () => {
+    const fetchData = async () => {
       const { data } = await supabase.from("attendance_logs_public" as any).select("id, full_name, company, created_at").eq("event_id", eventId).order("created_at", { ascending: false });
       if (data) { setTotalCount(data.length); setRecentCheckins((data as unknown as PublicLog[]).slice(0, 10)); }
       setLoading(false);
     };
-    fetchInitial();
+    fetchData();
 
+    // Poll every 5 seconds for real-time updates
+    const interval = setInterval(fetchData, 5000);
+
+    // Also try realtime subscription (works when authenticated)
     const channel = supabase.channel(`live-${eventId}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "attendance_logs", filter: `event_id=eq.${eventId}` }, (payload) => {
       const n = payload.new as any;
       const rec: PublicLog = { id: n.id, full_name: n.full_name, company: n.company, created_at: n.created_at };
@@ -47,7 +51,7 @@ const LiveDashboard = () => {
       setRecentCheckins((p) => [rec, ...p].slice(0, 10));
     }).subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { clearInterval(interval); supabase.removeChannel(channel); };
   }, [eventId, error]);
 
   if (loading) return <div className="min-h-screen bg-background"><AppHeader /><div className="flex items-center justify-center pt-32"><Loader2 className="w-12 h-12 animate-spin text-muted-foreground" /></div></div>;
