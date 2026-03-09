@@ -1,3 +1,5 @@
+import ThemeToggle from "@/components/ThemeToggle";
+
 const AppHeader = () => {
   return (
     <div className="w-full bg-card border-b border-border">
@@ -6,9 +8,10 @@ const AppHeader = () => {
         <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
           <span className="text-primary font-extrabold text-sm">JP</span>
         </div>
-        <h1 className="text-sm sm:text-base font-bold text-foreground leading-tight">
+        <h1 className="text-sm sm:text-base font-bold text-foreground leading-tight flex-1">
           JKUAT Industrial Park Meeting Attendance
         </h1>
+        <ThemeToggle />
       </div>
     </div>
   );
