@@ -28,6 +28,10 @@ const CheckIn = () => {
   const [checkedIn, setCheckedIn] = useState(false);
   const [hasStored, setHasStored] = useState(false);
   const [eventTitle, setEventTitle] = useState<string | null>(null);
+  const [eventVenue, setEventVenue] = useState<string | null>(null);
+  const [eventStartTime, setEventStartTime] = useState<string | null>(null);
+  const [eventEndTime, setEventEndTime] = useState<string | null>(null);
+  const [eventDate, setEventDate] = useState<string | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
   const [eventError, setEventError] = useState(false);
   const [existingRecordId, setExistingRecordId] = useState<string | null>(null);
