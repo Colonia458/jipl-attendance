@@ -354,6 +354,7 @@ const AdminDashboard = () => {
                   setNewDate={setNewDate}
                   creating={creating}
                   handleCreateEvent={handleCreateEvent}
+                  canCreateEvents={true}
                 />
               </TabsContent>
               <TabsContent value="admins">
