@@ -352,7 +352,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={handleDownloadCSV}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
+                  <Button variant="outline" size="sm" onClick={handleDownloadXLSX}><Download className="w-4 h-4 mr-2" /> Export XLSX</Button>
                   <Button variant="outline" size="sm" onClick={handlePrintPDF}><FileText className="w-4 h-4 mr-2" /> PDF Report</Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-2" /> Clear All</Button></AlertDialogTrigger>
