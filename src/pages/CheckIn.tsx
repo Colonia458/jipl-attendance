@@ -1,15 +1,48 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { CheckCircle2, ClipboardCheck, Loader2, AlertCircle, Pencil } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Loader2, AlertCircle, Pencil, MapPin, Clock } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 
 const STORAGE_KEY = "checkin_user_data";
+
+const formatTime12 = (time: string | null | undefined) => {
+  if (!time) return null;
+  const [hours, minutes] = time.split(":");
+  const h = parseInt(hours);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${minutes} ${ampm}`;
+};
+
+const EventInfoBanner = ({ date, venue, startTime, endTime }: { date: string | null; venue: string | null; startTime: string | null; endTime: string | null }) => {
+  if (!venue && !startTime && !date) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+      {date && (
+        <span className="flex items-center gap-1">
+          📅 {format(new Date(date + "T00:00:00"), "MMMM d, yyyy")}
+        </span>
+      )}
+      {venue && (
+        <span className="flex items-center gap-1">
+          <MapPin className="w-3.5 h-3.5" /> {venue}
+        </span>
+      )}
+      {startTime && (
+        <span className="flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5" /> {formatTime12(startTime)}{endTime ? ` – ${formatTime12(endTime)}` : ""}
+        </span>
+      )}
+    </div>
+  );
+};
 
 interface UserData {
   full_name: string;
@@ -28,6 +61,10 @@ const CheckIn = () => {
   const [checkedIn, setCheckedIn] = useState(false);
   const [hasStored, setHasStored] = useState(false);
   const [eventTitle, setEventTitle] = useState<string | null>(null);
+  const [eventVenue, setEventVenue] = useState<string | null>(null);
+  const [eventStartTime, setEventStartTime] = useState<string | null>(null);
+  const [eventEndTime, setEventEndTime] = useState<string | null>(null);
+  const [eventDate, setEventDate] = useState<string | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
   const [eventError, setEventError] = useState(false);
   const [existingRecordId, setExistingRecordId] = useState<string | null>(null);
@@ -36,8 +73,15 @@ const CheckIn = () => {
   useEffect(() => {
     if (!eventId) { setEventLoading(false); setEventError(true); return; }
     const fetchEvent = async () => {
-      const { data, error } = await supabase.from("events").select("title").eq("id", eventId).single();
-      if (error || !data) setEventError(true); else setEventTitle(data.title);
+      const { data, error } = await supabase.from("events").select("title, venue, start_time, end_time, date").eq("id", eventId).single();
+      if (error || !data) setEventError(true);
+      else {
+        setEventTitle(data.title);
+        setEventVenue(data.venue);
+        setEventStartTime(data.start_time);
+        setEventEndTime(data.end_time);
+        setEventDate(data.date);
+      }
       setEventLoading(false);
     };
     fetchEvent();
@@ -159,6 +203,7 @@ const CheckIn = () => {
             </div>
             <h2 className="text-2xl font-bold">You're Checked In!</h2>
             <p className="text-muted-foreground">Thank you, {form.full_name}. Your attendance for <strong>{eventTitle}</strong> has been recorded.</p>
+            <EventInfoBanner date={eventDate} venue={eventVenue} startTime={eventStartTime} endTime={eventEndTime} />
             <div className="flex gap-3 mt-4">
               <Button variant="outline" onClick={() => { setIsEditing(true); }}>
                 <Pencil className="w-4 h-4 mr-2" /> Edit Details
@@ -185,6 +230,7 @@ const CheckIn = () => {
             <CardDescription>
               {isEditing ? "Update your information below" : hasStored ? "Welcome back! Confirm your details to check in." : "Enter your details to mark your attendance"}
             </CardDescription>
+            {!isEditing && <EventInfoBanner date={eventDate} venue={eventVenue} startTime={eventStartTime} endTime={eventEndTime} />}
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

@@ -8,7 +8,6 @@ interface TimePickerProps {
 }
 
 const TimePicker = ({ value, onChange, placeholder = "Select time" }: TimePickerProps) => {
-  // Parse 24h value into 12h parts
   const parseTime = (val: string) => {
     if (!val) return { hour: "", minute: "", period: "AM" };
     const [h, m] = val.split(":");
@@ -40,10 +39,10 @@ const TimePicker = ({ value, onChange, placeholder = "Select time" }: TimePicker
   const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
 
   return (
-    <div className="flex items-center gap-1.5">
-      <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+    <div className="flex items-center gap-1">
+      <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
       <Select value={hour} onValueChange={(v) => handleChange("hour", v)}>
-        <SelectTrigger className="w-[70px] h-9 text-sm">
+        <SelectTrigger className="w-[52px] h-8 text-xs px-2">
           <SelectValue placeholder="Hr" />
         </SelectTrigger>
         <SelectContent>
@@ -52,9 +51,9 @@ const TimePicker = ({ value, onChange, placeholder = "Select time" }: TimePicker
           ))}
         </SelectContent>
       </Select>
-      <span className="text-muted-foreground font-bold">:</span>
+      <span className="text-muted-foreground font-bold text-xs">:</span>
       <Select value={minute} onValueChange={(v) => handleChange("minute", v)}>
-        <SelectTrigger className="w-[70px] h-9 text-sm">
+        <SelectTrigger className="w-[52px] h-8 text-xs px-2">
           <SelectValue placeholder="Min" />
         </SelectTrigger>
         <SelectContent>
@@ -64,7 +63,7 @@ const TimePicker = ({ value, onChange, placeholder = "Select time" }: TimePicker
         </SelectContent>
       </Select>
       <Select value={period} onValueChange={(v) => handleChange("period", v)}>
-        <SelectTrigger className="w-[76px] h-9 text-sm">
+        <SelectTrigger className="w-[58px] h-8 text-xs px-2">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
