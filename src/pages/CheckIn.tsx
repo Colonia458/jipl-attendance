@@ -203,6 +203,7 @@ const CheckIn = () => {
             </div>
             <h2 className="text-2xl font-bold">You're Checked In!</h2>
             <p className="text-muted-foreground">Thank you, {form.full_name}. Your attendance for <strong>{eventTitle}</strong> has been recorded.</p>
+            <EventInfoBanner date={eventDate} venue={eventVenue} startTime={eventStartTime} endTime={eventEndTime} />
             <div className="flex gap-3 mt-4">
               <Button variant="outline" onClick={() => { setIsEditing(true); }}>
                 <Pencil className="w-4 h-4 mr-2" /> Edit Details
