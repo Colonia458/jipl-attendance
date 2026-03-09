@@ -81,22 +81,31 @@ export type Database = {
           created_at: string
           date: string
           description: string | null
+          end_time: string | null
           id: string
+          start_time: string | null
           title: string
+          venue: string | null
         }
         Insert: {
           created_at?: string
           date: string
           description?: string | null
+          end_time?: string | null
           id?: string
+          start_time?: string | null
           title: string
+          venue?: string | null
         }
         Update: {
           created_at?: string
           date?: string
           description?: string | null
+          end_time?: string | null
           id?: string
+          start_time?: string | null
           title?: string
+          venue?: string | null
         }
         Relationships: []
       }

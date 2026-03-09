@@ -33,6 +33,9 @@ interface EventRecord {
   title: string;
   description: string | null;
   date: string;
+  venue?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
   created_at: string;
 }
 
@@ -60,6 +63,9 @@ const AdminDashboard = () => {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newDate, setNewDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [newVenue, setNewVenue] = useState("");
+  const [newStartTime, setNewStartTime] = useState("");
+  const [newEndTime, setNewEndTime] = useState("");
   const [creating, setCreating] = useState(false);
 
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
@@ -135,9 +141,21 @@ const AdminDashboard = () => {
   const handleCreateEvent = async () => {
     if (!newTitle.trim() || !newDate) { toast.error("Title and date are required"); return; }
     setCreating(true);
-    const { error } = await supabase.from("events").insert({ title: newTitle.trim(), description: newDesc.trim() || null, date: newDate });
+    const { error } = await supabase.from("events").insert({
+      title: newTitle.trim(),
+      description: newDesc.trim() || null,
+      date: newDate,
+      venue: newVenue.trim() || null,
+      start_time: newStartTime || null,
+      end_time: newEndTime || null,
+    });
     if (error) { toast.error("Failed to create event"); console.error(error); }
-    else { toast.success("Event created!"); setNewTitle(""); setNewDesc(""); setNewDate(format(new Date(), "yyyy-MM-dd")); fetchEvents(); }
+    else {
+      toast.success("Event created!");
+      setNewTitle(""); setNewDesc(""); setNewDate(format(new Date(), "yyyy-MM-dd"));
+      setNewVenue(""); setNewStartTime(""); setNewEndTime("");
+      fetchEvents();
+    }
     setCreating(false);
   };
 
@@ -148,7 +166,14 @@ const AdminDashboard = () => {
     else { toast.success("Event deleted"); if (selectedEvent?.id === deleteEvent.id) { setSelectedEvent(null); setRecords([]); } fetchEvents(); }
   }, [deleteEvent, selectedEvent]);
 
-  const handleUpdateEvent = async (id: string, data: { title: string; description: string | null; date: string }) => {
+  const handleUpdateEvent = async (id: string, data: {
+    title: string;
+    description: string | null;
+    date: string;
+    venue: string | null;
+    start_time: string | null;
+    end_time: string | null;
+  }) => {
     const { error } = await supabase.from("events").update(data).eq("id", id);
     if (error) { toast.error("Failed to update event"); console.error(error); }
     else {
@@ -352,6 +377,12 @@ const AdminDashboard = () => {
                   setNewDesc={setNewDesc}
                   newDate={newDate}
                   setNewDate={setNewDate}
+                  newVenue={newVenue}
+                  setNewVenue={setNewVenue}
+                  newStartTime={newStartTime}
+                  setNewStartTime={setNewStartTime}
+                  newEndTime={newEndTime}
+                  setNewEndTime={setNewEndTime}
                   creating={creating}
                   handleCreateEvent={handleCreateEvent}
                   canCreateEvents={true}
@@ -377,6 +408,12 @@ const AdminDashboard = () => {
               setNewDesc={setNewDesc}
               newDate={newDate}
               setNewDate={setNewDate}
+              newVenue={newVenue}
+              setNewVenue={setNewVenue}
+              newStartTime={newStartTime}
+              setNewStartTime={setNewStartTime}
+              newEndTime={newEndTime}
+              setNewEndTime={setNewEndTime}
               creating={creating}
               handleCreateEvent={handleCreateEvent}
               canCreateEvents={userPermissions.includes("create_events")}
