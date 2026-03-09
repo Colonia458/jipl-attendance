@@ -17,6 +17,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import QRActionsModal from "@/components/QRActionsModal";
@@ -26,12 +27,6 @@ import EditRecordDialog from "@/components/EditRecordDialog";
 import ManageAdmins from "@/components/ManageAdmins";
 import EventsListView from "@/components/EventsListView";
 import AppHeader from "@/components/AppHeader";
-
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 interface EventRecord {
   id: string;
