@@ -486,16 +486,18 @@ const AdminDashboard = () => {
                                 <TableCell className="hidden lg:table-cell">{r.company}</TableCell>
                                 <TableCell className="whitespace-nowrap text-sm">{format(new Date(r.created_at), "MMM d, h:mm a")}</TableCell>
                                 <TableCell>
-                                  <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditRecord(r)}><Pencil className="w-3 h-3" /></Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash2 className="w-3 h-3" /></Button></AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Delete this record?</AlertDialogTitle><AlertDialogDescription>Remove {r.full_name}'s attendance record permanently.</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteRecord(r.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
+                                  {userPermissions.includes("manage_attendance") && (
+                                    <div className="flex gap-1">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditRecord(r)}><Pencil className="w-3 h-3" /></Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash2 className="w-3 h-3" /></Button></AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader><AlertDialogTitle>Delete this record?</AlertDialogTitle><AlertDialogDescription>Remove {r.full_name}'s attendance record permanently.</AlertDialogDescription></AlertDialogHeader>
+                                          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteRecord(r.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             ))}
