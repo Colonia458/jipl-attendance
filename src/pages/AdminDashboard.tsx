@@ -441,13 +441,15 @@ const AdminDashboard = () => {
                       </Popover>
                     </>
                   )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-2" /> Clear All</Button></AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Clear all records for this event?</AlertDialogTitle><AlertDialogDescription>This will permanently delete all {records.length} records for "{selectedEvent.title}".</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleClearEventLogs} disabled={clearing}>{clearing ? "Clearing..." : "Yes, clear all"}</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {userPermissions.includes("manage_attendance") && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-2" /> Clear All</Button></AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader><AlertDialogTitle>Clear all records for this event?</AlertDialogTitle><AlertDialogDescription>This will permanently delete all {records.length} records for "{selectedEvent.title}".</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleClearEventLogs} disabled={clearing}>{clearing ? "Clearing..." : "Yes, clear all"}</AlertDialogAction></AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                   <Button variant="secondary" size="sm" onClick={() => fetchLogs(selectedEvent.id)} className="ml-auto">Refresh</Button>
                 </div>
 
