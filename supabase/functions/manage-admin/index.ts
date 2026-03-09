@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     if (!authHeader) throw new Error("Missing authorization header");
 
     const token = authHeader.replace("Bearer ", "");
-    const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseUser = createClient(supabaseUrl, anonKey);
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser(token);
     if (userError || !user) throw new Error("Unauthorized");
