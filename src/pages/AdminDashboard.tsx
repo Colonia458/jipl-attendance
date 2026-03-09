@@ -367,8 +367,8 @@ const AdminDashboard = () => {
               loading={loading}
               onSelect={handleSelectEvent}
               onRefresh={fetchEvents}
-              onEdit={setEditEvent}
-              onDelete={setDeleteEvent}
+              onEdit={userPermissions.includes("create_events") ? setEditEvent : undefined}
+              onDelete={userPermissions.includes("create_events") ? setDeleteEvent : undefined}
               onQr={setQrModalEvent}
               liveUrl={liveUrl}
               newTitle={newTitle}
@@ -379,6 +379,7 @@ const AdminDashboard = () => {
               setNewDate={setNewDate}
               creating={creating}
               handleCreateEvent={handleCreateEvent}
+              canCreateEvents={userPermissions.includes("create_events")}
             />
           )
         ) : (
