@@ -241,9 +241,16 @@ const AdminDashboard = () => {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-foreground">Event Dashboard</h2>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" /> Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <ShieldCheck className="w-3 h-3" /> Super Admin
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" /> Logout
+            </Button>
+          </div>
         </div>
       </header>
 
