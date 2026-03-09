@@ -70,6 +70,8 @@ const AdminDashboard = () => {
   const [editEvent, setEditEvent] = useState<EventRecord | null>(null);
   const [editRecord, setEditRecord] = useState<LogRecord | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [logoBase64, setLogoBase64] = useState<string>("");
 
   const checkInUrl = (eventId: string) => `${window.location.origin}/checkin?event=${eventId}`;
   const liveUrl = (eventId: string) => `${window.location.origin}/event/${eventId}/live`;
