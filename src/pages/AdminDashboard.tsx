@@ -82,8 +82,24 @@ const AdminDashboard = () => {
       if (!session) { navigate("/admin"); return; }
       // Check if super_admin
       const { data: hasRole } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "super_admin" });
-      setIsSuperAdmin(!!hasRole);
+      const isSA = !!hasRole;
+      setIsSuperAdmin(isSA);
+      if (!isSA) {
+        // Fetch permissions for regular admin
+        const { data: perms } = await supabase.from("admin_permissions" as any).select("permission").eq("user_id", session.user.id);
+        setUserPermissions((perms as any[] || []).map((p: any) => p.permission));
+      } else {
+        setUserPermissions(["export_data", "create_events", "manage_attendance"]);
+      }
       fetchEvents();
+      // Preload logo for PDF
+      try {
+        const res = await fetch("/ip_logo.png");
+        const blob = await res.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setLogoBase64(reader.result as string);
+        reader.readAsDataURL(blob);
+      } catch {}
     };
     init();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
