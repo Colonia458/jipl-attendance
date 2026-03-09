@@ -72,6 +72,7 @@ const AdminDashboard = () => {
   const [deleteEvent, setDeleteEvent] = useState<EventRecord | null>(null);
   const [editEvent, setEditEvent] = useState<EventRecord | null>(null);
   const [editRecord, setEditRecord] = useState<LogRecord | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const checkInUrl = (eventId: string) => `${window.location.origin}/checkin?event=${eventId}`;
   const liveUrl = (eventId: string) => `${window.location.origin}/event/${eventId}/live`;
