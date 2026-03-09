@@ -73,9 +73,34 @@ const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime,
       pdf.setTextColor(100);
       pdf.text("Scan to Check In", pageWidth / 2, 58, { align: "center" });
 
+      // Add venue and time information
+      let yOffset = 65;
+      if (venue) {
+        pdf.setFontSize(11);
+        pdf.setTextColor(80);
+        pdf.text(`📍 ${venue}`, pageWidth / 2, yOffset, { align: "center" });
+        yOffset += 7;
+      }
+      
+      if (startTime || endTime) {
+        pdf.setFontSize(11);
+        pdf.setTextColor(80);
+        const timeText = startTime && endTime 
+          ? `🕐 ${formatTime(startTime)} - ${formatTime(endTime)}`
+          : startTime 
+          ? `🕐 ${formatTime(startTime)}`
+          : endTime 
+          ? `🕐 Until ${formatTime(endTime)}`
+          : "";
+        if (timeText) {
+          pdf.text(timeText, pageWidth / 2, yOffset, { align: "center" });
+          yOffset += 10;
+        }
+      }
+
       const qrSize = 120;
       const x = (pageWidth - qrSize) / 2;
-      const y = 70;
+      const y = yOffset + 5;
       pdf.addImage(dataUrl, "PNG", x, y, qrSize, qrSize);
 
       pdf.setFontSize(10);
