@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Download, Trash2, LogOut, QrCode, Users, Loader2, Search, Plus, Calendar as CalendarIcon, Eye, FileText, Radio, X, Pencil } from "lucide-react";
+import { Download, Trash2, LogOut, QrCode, Users, Loader2, Search, Plus, Calendar as CalendarIcon, Eye, FileText, Radio, X, Pencil, ShieldCheck } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
