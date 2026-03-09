@@ -27,6 +27,7 @@ import EditRecordDialog from "@/components/EditRecordDialog";
 import ManageAdmins from "@/components/ManageAdmins";
 import EventsListView from "@/components/EventsListView";
 import AppHeader from "@/components/AppHeader";
+import AdminActivityLog from "@/components/AdminActivityLog";
 
 interface EventRecord {
   id: string;
