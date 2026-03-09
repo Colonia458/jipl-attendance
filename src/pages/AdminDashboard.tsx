@@ -12,16 +12,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { Download, Trash2, LogOut, QrCode, Users, Loader2, Search, Plus, Calendar as CalendarIcon, Eye, FileText, Radio, X, Pencil } from "lucide-react";
+import { Download, Trash2, LogOut, QrCode, Users, Loader2, Search, Plus, Calendar as CalendarIcon, Eye, FileText, Radio, X, Pencil, ShieldCheck } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import QRActionsModal from "@/components/QRActionsModal";
 import DeleteEventDialog from "@/components/DeleteEventDialog";
 import EditEventDialog from "@/components/EditEventDialog";
 import EditRecordDialog from "@/components/EditRecordDialog";
+import ManageAdmins from "@/components/ManageAdmins";
+import EventsListView from "@/components/EventsListView";
 import AppHeader from "@/components/AppHeader";
 
 declare module "jspdf" {
@@ -71,6 +74,7 @@ const AdminDashboard = () => {
   const [deleteEvent, setDeleteEvent] = useState<EventRecord | null>(null);
   const [editEvent, setEditEvent] = useState<EventRecord | null>(null);
   const [editRecord, setEditRecord] = useState<LogRecord | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const checkInUrl = (eventId: string) => `${window.location.origin}/checkin?event=${eventId}`;
   const liveUrl = (eventId: string) => `${window.location.origin}/event/${eventId}/live`;
@@ -79,6 +83,9 @@ const AdminDashboard = () => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/admin"); return; }
+      // Check if super_admin
+      const { data: hasRole } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "super_admin" });
+      setIsSuperAdmin(!!hasRole);
       fetchEvents();
     };
     init();
@@ -236,80 +243,71 @@ const AdminDashboard = () => {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-foreground">Event Dashboard</h2>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" /> Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <ShieldCheck className="w-3 h-3" /> Super Admin
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" /> Logout
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
         {!selectedEvent ? (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">All Events</h2>
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={fetchEvents}>Refresh</Button>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm"><Plus className="w-4 h-4 mr-2" /> New Event</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader><DialogTitle>Create Event</DialogTitle></DialogHeader>
-                    <div className="space-y-4 py-2">
-                      <div className="space-y-1.5"><Label>Title</Label><Input placeholder="Team Standup" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Description (optional)</Label><Input placeholder="Weekly sync meeting" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Date</Label><Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} /></div>
-                    </div>
-                    <DialogFooter>
-                      <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-                      <DialogClose asChild><Button onClick={handleCreateEvent} disabled={creating}>{creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} Create</Button></DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-            ) : events.length === 0 ? (
-              <Card className="glass-card">
-                <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <CalendarIcon className="w-10 h-10 mb-3 opacity-40" />
-                  <p>No events yet. Create your first event to get started.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {events.map((ev) => (
-                  <Card key={ev.id} className="glass-card hover:border-primary/30 transition-colors cursor-pointer" onClick={() => handleSelectEvent(ev)}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">{ev.title}</CardTitle>
-                      <CardDescription>{format(new Date(ev.date), "MMMM d, yyyy")}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between gap-1">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleSelectEvent(ev); }}>
-                        <Eye className="w-4 h-4 mr-1" /> Logs
-                      </Button>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" title="Edit Event" onClick={(e) => { e.stopPropagation(); setEditEvent(ev); }}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="QR Actions" onClick={(e) => { e.stopPropagation(); setQrModalEvent(ev); }}>
-                          <QrCode className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Live Dashboard" onClick={(e) => { e.stopPropagation(); window.open(liveUrl(ev.id), "_blank"); }}>
-                          <Radio className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Delete Event" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteEvent(ev); }}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+          isSuperAdmin ? (
+            <Tabs defaultValue="events" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="events">Events</TabsTrigger>
+                <TabsTrigger value="admins">Manage Admins</TabsTrigger>
+              </TabsList>
+              <TabsContent value="events">
+                <EventsListView
+                  events={events}
+                  loading={loading}
+                  onSelect={handleSelectEvent}
+                  onRefresh={fetchEvents}
+                  onEdit={setEditEvent}
+                  onDelete={setDeleteEvent}
+                  onQr={setQrModalEvent}
+                  liveUrl={liveUrl}
+                  newTitle={newTitle}
+                  setNewTitle={setNewTitle}
+                  newDesc={newDesc}
+                  setNewDesc={setNewDesc}
+                  newDate={newDate}
+                  setNewDate={setNewDate}
+                  creating={creating}
+                  handleCreateEvent={handleCreateEvent}
+                />
+              </TabsContent>
+              <TabsContent value="admins">
+                <ManageAdmins />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <EventsListView
+              events={events}
+              loading={loading}
+              onSelect={handleSelectEvent}
+              onRefresh={fetchEvents}
+              onEdit={setEditEvent}
+              onDelete={setDeleteEvent}
+              onQr={setQrModalEvent}
+              liveUrl={liveUrl}
+              newTitle={newTitle}
+              setNewTitle={setNewTitle}
+              newDesc={newDesc}
+              setNewDesc={setNewDesc}
+              newDate={newDate}
+              setNewDate={setNewDate}
+              creating={creating}
+              handleCreateEvent={handleCreateEvent}
+            />
+          )
         ) : (
           <div className="space-y-6">
             <div className="flex items-center gap-3">
