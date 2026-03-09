@@ -22,6 +22,7 @@ import QRActionsModal from "@/components/QRActionsModal";
 import DeleteEventDialog from "@/components/DeleteEventDialog";
 import EditEventDialog from "@/components/EditEventDialog";
 import EditRecordDialog from "@/components/EditRecordDialog";
+import ManageAdmins from "@/components/ManageAdmins";
 import AppHeader from "@/components/AppHeader";
 
 declare module "jspdf" {
