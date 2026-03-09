@@ -21,6 +21,15 @@ interface QRActionsModalProps {
 const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime, endTime }: QRActionsModalProps) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
+  const formatTime = (time: string | null | undefined) => {
+    if (!time) return null;
+    const [hours, minutes] = time.split(":");
+    const h = parseInt(hours);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${h12}:${minutes} ${ampm}`;
+  };
+
   const handleCopy = () => { navigator.clipboard.writeText(url); toast.success("URL copied!"); };
 
   const handleDownloadPNG = async () => {
