@@ -33,6 +33,9 @@ interface EventRecord {
   title: string;
   description: string | null;
   date: string;
+  venue?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
   created_at: string;
 }
 
@@ -60,6 +63,9 @@ const AdminDashboard = () => {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newDate, setNewDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [newVenue, setNewVenue] = useState("");
+  const [newStartTime, setNewStartTime] = useState("");
+  const [newEndTime, setNewEndTime] = useState("");
   const [creating, setCreating] = useState(false);
 
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
