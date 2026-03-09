@@ -24,6 +24,7 @@ import DeleteEventDialog from "@/components/DeleteEventDialog";
 import EditEventDialog from "@/components/EditEventDialog";
 import EditRecordDialog from "@/components/EditRecordDialog";
 import ManageAdmins from "@/components/ManageAdmins";
+import EventsListView from "@/components/EventsListView";
 import AppHeader from "@/components/AppHeader";
 
 declare module "jspdf" {
