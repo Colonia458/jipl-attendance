@@ -172,16 +172,22 @@ const AdminDashboard = () => {
 
   const todayCount = useMemo(() => records.filter((r) => isToday(new Date(r.created_at))).length, [records]);
 
-  const handleDownloadCSV = () => {
+  const handleDownloadXLSX = () => {
     if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
-    const headers = ["Timestamp", "Event Name", "Full Name", "Email", "Phone", "Job Title", "Company"];
-    const rows = [headers.join(","), ...filtered.map((r) => [`"${format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss")}"`, `"${selectedEvent.title}"`, `"${r.full_name}"`, `"${r.email}"`, `"${r.phone_number}"`, `"${r.job_title}"`, `"${r.company}"`].join(","))];
-    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url;
-    a.download = `${selectedEvent.title.replace(/\s+/g, "_")}_${selectedEvent.date}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    toast.success("CSV downloaded");
+    const wsData = filtered.map((r, i) => ({
+      "#": i + 1,
+      "Full Name": r.full_name,
+      "Email": r.email,
+      "Phone": r.phone_number,
+      "Job Title": r.job_title,
+      "Company": r.company,
+      "Checked In": format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss"),
+    }));
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, selectedEvent.title.slice(0, 31));
+    XLSX.writeFile(wb, `${selectedEvent.title.replace(/\s+/g, "_")}_${selectedEvent.date}.xlsx`);
+    toast.success("XLSX downloaded");
   };
 
   const handlePrintPDF = () => {
@@ -209,7 +215,7 @@ const AdminDashboard = () => {
     pdf.setTextColor(100);
     pdf.text(`Date: ${format(new Date(selectedEvent.date), "MMMM d, yyyy")}  |  Total: ${filtered.length} attendees`, 14, 38);
 
-    pdf.autoTable({
+    autoTable(pdf, {
       startY: 44,
       head: [["#", "Full Name", "Email", "Phone", "Job Title", "Company", "Checked In"]],
       body: filtered.map((r, i) => [i + 1, r.full_name, r.email, r.phone_number, r.job_title, r.company, format(new Date(r.created_at), "MMM d, h:mm a")]),
