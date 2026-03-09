@@ -361,6 +361,7 @@ const AdminDashboard = () => {
               <TabsList>
                 <TabsTrigger value="events">Events</TabsTrigger>
                 <TabsTrigger value="admins">Manage Admins</TabsTrigger>
+                <TabsTrigger value="activity">Activity Log</TabsTrigger>
               </TabsList>
               <TabsContent value="events">
                 <EventsListView
@@ -391,6 +392,9 @@ const AdminDashboard = () => {
               </TabsContent>
               <TabsContent value="admins">
                 <ManageAdmins />
+              </TabsContent>
+              <TabsContent value="activity">
+                <AdminActivityLog />
               </TabsContent>
             </Tabs>
           ) : (
