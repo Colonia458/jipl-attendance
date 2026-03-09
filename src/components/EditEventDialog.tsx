@@ -3,7 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Loader2, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import TimePicker from "@/components/TimePicker";
 
 interface EditEventDialogProps {
   open: boolean;
@@ -35,6 +40,7 @@ const EditEventDialog = ({ open, onOpenChange, event, onSave }: EditEventDialogP
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [saving, setSaving] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     if (event) {
@@ -46,6 +52,15 @@ const EditEventDialog = ({ open, onOpenChange, event, onSave }: EditEventDialogP
       setEndTime(event.end_time || "");
     }
   }, [event]);
+
+  const selectedDate = date ? new Date(date + "T00:00:00") : undefined;
+
+  const handleDateSelect = (d: Date | undefined) => {
+    if (d) {
+      setDate(format(d, "yyyy-MM-dd"));
+      setCalendarOpen(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!event || !title.trim() || !date) return;
@@ -81,16 +96,39 @@ const EditEventDialog = ({ open, onOpenChange, event, onSave }: EditEventDialogP
           </div>
           <div className="space-y-1.5">
             <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(new Date(date + "T00:00:00"), "MMMM d, yyyy") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start Time</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <TimePicker value={startTime} onChange={setStartTime} />
             </div>
             <div className="space-y-1.5">
               <Label>End Time</Label>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              <TimePicker value={endTime} onChange={setEndTime} />
             </div>
           </div>
         </div>
