@@ -81,6 +81,9 @@ const AdminDashboard = () => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/admin"); return; }
+      // Check if super_admin
+      const { data: hasRole } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "super_admin" });
+      setIsSuperAdmin(!!hasRole);
       fetchEvents();
     };
     init();
