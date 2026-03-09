@@ -41,8 +41,15 @@ const CheckIn = () => {
   useEffect(() => {
     if (!eventId) { setEventLoading(false); setEventError(true); return; }
     const fetchEvent = async () => {
-      const { data, error } = await supabase.from("events").select("title").eq("id", eventId).single();
-      if (error || !data) setEventError(true); else setEventTitle(data.title);
+      const { data, error } = await supabase.from("events").select("title, venue, start_time, end_time, date").eq("id", eventId).single();
+      if (error || !data) setEventError(true);
+      else {
+        setEventTitle(data.title);
+        setEventVenue(data.venue);
+        setEventStartTime(data.start_time);
+        setEventEndTime(data.end_time);
+        setEventDate(data.date);
+      }
       setEventLoading(false);
     };
     fetchEvent();
