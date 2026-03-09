@@ -70,6 +70,8 @@ const AdminDashboard = () => {
   const [editEvent, setEditEvent] = useState<EventRecord | null>(null);
   const [editRecord, setEditRecord] = useState<LogRecord | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [logoBase64, setLogoBase64] = useState<string>("");
 
   const checkInUrl = (eventId: string) => `${window.location.origin}/checkin?event=${eventId}`;
   const liveUrl = (eventId: string) => `${window.location.origin}/event/${eventId}/live`;
@@ -80,8 +82,24 @@ const AdminDashboard = () => {
       if (!session) { navigate("/admin"); return; }
       // Check if super_admin
       const { data: hasRole } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "super_admin" });
-      setIsSuperAdmin(!!hasRole);
+      const isSA = !!hasRole;
+      setIsSuperAdmin(isSA);
+      if (!isSA) {
+        // Fetch permissions for regular admin
+        const { data: perms } = await supabase.from("admin_permissions" as any).select("permission").eq("user_id", session.user.id);
+        setUserPermissions((perms as any[] || []).map((p: any) => p.permission));
+      } else {
+        setUserPermissions(["export_data", "create_events", "manage_attendance"]);
+      }
       fetchEvents();
+      // Preload logo for PDF
+      try {
+        const res = await fetch("/ip_logo.png");
+        const blob = await res.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setLogoBase64(reader.result as string);
+        reader.readAsDataURL(blob);
+      } catch {}
     };
     init();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -195,28 +213,33 @@ const AdminDashboard = () => {
     const pdf = new jsPDF(orientation, "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
 
+    // Logo
+    if (logoBase64) {
+      try { pdf.addImage(logoBase64, "PNG", 14, 4, 18, 18); } catch {}
+    }
+
     // JKUAT branding header
     pdf.setFontSize(10);
     pdf.setTextColor(154, 196, 75);
-    pdf.text("JKUAT Industrial Park", 14, 12);
+    pdf.text("JKUAT Industrial Park", logoBase64 ? 35 : 14, 12);
     pdf.setFontSize(8);
     pdf.setTextColor(150);
-    pdf.text("Meeting Attendance System", 14, 17);
+    pdf.text("Meeting Attendance System", logoBase64 ? 35 : 14, 17);
 
     // Line separator
     pdf.setDrawColor(154, 196, 75);
     pdf.setLineWidth(0.5);
-    pdf.line(14, 20, pageWidth - 14, 20);
+    pdf.line(14, 23, pageWidth - 14, 23);
 
     pdf.setTextColor(35, 31, 31);
     pdf.setFontSize(18);
-    pdf.text(selectedEvent.title, 14, 30);
+    pdf.text(selectedEvent.title, 14, 33);
     pdf.setFontSize(11);
     pdf.setTextColor(100);
-    pdf.text(`Date: ${format(new Date(selectedEvent.date), "MMMM d, yyyy")}  |  Total: ${filtered.length} attendees`, 14, 38);
+    pdf.text(`Date: ${format(new Date(selectedEvent.date), "MMMM d, yyyy")}  |  Total: ${filtered.length} attendees`, 14, 41);
 
     autoTable(pdf, {
-      startY: 44,
+      startY: 47,
       head: [["#", "Full Name", "Email", "Phone", "Job Title", "Company", "Checked In"]],
       body: filtered.map((r, i) => [i + 1, r.full_name, r.email, r.phone_number, r.job_title, r.company, format(new Date(r.created_at), "MMM d, h:mm a")]),
       styles: { fontSize: 9 },
@@ -331,6 +354,7 @@ const AdminDashboard = () => {
                   setNewDate={setNewDate}
                   creating={creating}
                   handleCreateEvent={handleCreateEvent}
+                  canCreateEvents={true}
                 />
               </TabsContent>
               <TabsContent value="admins">
@@ -343,8 +367,8 @@ const AdminDashboard = () => {
               loading={loading}
               onSelect={handleSelectEvent}
               onRefresh={fetchEvents}
-              onEdit={setEditEvent}
-              onDelete={setDeleteEvent}
+              onEdit={userPermissions.includes("create_events") ? setEditEvent : undefined}
+              onDelete={userPermissions.includes("create_events") ? setDeleteEvent : undefined}
               onQr={setQrModalEvent}
               liveUrl={liveUrl}
               newTitle={newTitle}
@@ -355,6 +379,7 @@ const AdminDashboard = () => {
               setNewDate={setNewDate}
               creating={creating}
               handleCreateEvent={handleCreateEvent}
+              canCreateEvents={userPermissions.includes("create_events")}
             />
           )
         ) : (
@@ -400,25 +425,31 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={handleDownloadXLSX}><Download className="w-4 h-4 mr-2" /> Export XLSX</Button>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm"><FileText className="w-4 h-4 mr-2" /> PDF Report</Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2" align="start">
-                      <div className="flex flex-col gap-1">
-                        <Button variant="ghost" size="sm" className="justify-start" onClick={() => handlePrintPDF("portrait")}>Portrait (A4)</Button>
-                        <Button variant="ghost" size="sm" className="justify-start" onClick={() => handlePrintPDF("landscape")}>Landscape (A4)</Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-2" /> Clear All</Button></AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Clear all records for this event?</AlertDialogTitle><AlertDialogDescription>This will permanently delete all {records.length} records for "{selectedEvent.title}".</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleClearEventLogs} disabled={clearing}>{clearing ? "Clearing..." : "Yes, clear all"}</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {userPermissions.includes("export_data") && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={handleDownloadXLSX}><Download className="w-4 h-4 mr-2" /> Export XLSX</Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm"><FileText className="w-4 h-4 mr-2" /> PDF Report</Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-2" align="start">
+                          <div className="flex flex-col gap-1">
+                            <Button variant="ghost" size="sm" className="justify-start" onClick={() => handlePrintPDF("portrait")}>Portrait (A4)</Button>
+                            <Button variant="ghost" size="sm" className="justify-start" onClick={() => handlePrintPDF("landscape")}>Landscape (A4)</Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </>
+                  )}
+                  {userPermissions.includes("manage_attendance") && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="w-4 h-4 mr-2" /> Clear All</Button></AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader><AlertDialogTitle>Clear all records for this event?</AlertDialogTitle><AlertDialogDescription>This will permanently delete all {records.length} records for "{selectedEvent.title}".</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleClearEventLogs} disabled={clearing}>{clearing ? "Clearing..." : "Yes, clear all"}</AlertDialogAction></AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                   <Button variant="secondary" size="sm" onClick={() => fetchLogs(selectedEvent.id)} className="ml-auto">Refresh</Button>
                 </div>
 
@@ -455,16 +486,18 @@ const AdminDashboard = () => {
                                 <TableCell className="hidden lg:table-cell">{r.company}</TableCell>
                                 <TableCell className="whitespace-nowrap text-sm">{format(new Date(r.created_at), "MMM d, h:mm a")}</TableCell>
                                 <TableCell>
-                                  <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditRecord(r)}><Pencil className="w-3 h-3" /></Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash2 className="w-3 h-3" /></Button></AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Delete this record?</AlertDialogTitle><AlertDialogDescription>Remove {r.full_name}'s attendance record permanently.</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteRecord(r.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
+                                  {userPermissions.includes("manage_attendance") && (
+                                    <div className="flex gap-1">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditRecord(r)}><Pencil className="w-3 h-3" /></Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash2 className="w-3 h-3" /></Button></AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader><AlertDialogTitle>Delete this record?</AlertDialogTitle><AlertDialogDescription>Remove {r.full_name}'s attendance record permanently.</AlertDialogDescription></AlertDialogHeader>
+                                          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteRecord(r.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             ))}

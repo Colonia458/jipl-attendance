@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     });
     if (!hasRole) throw new Error("Only super admins can manage admins");
 
-    const { action, email, password, role, user_id } = await req.json();
+    const { action, email, password, role, user_id, permissions } = await req.json();
 
     if (action === "create") {
       if (!email || !password || !role) throw new Error("Missing required fields");
@@ -53,6 +53,12 @@ Deno.serve(async (req) => {
         .insert({ user_id: newUser.user!.id, role });
       if (roleError) throw roleError;
 
+      // Assign permissions for regular admins
+      if (role === "admin" && permissions && Array.isArray(permissions) && permissions.length > 0) {
+        const permRows = permissions.map((p: string) => ({ user_id: newUser.user!.id, permission: p }));
+        await supabaseAdmin.from("admin_permissions").insert(permRows);
+      }
+
       return new Response(
         JSON.stringify({ success: true, user_id: newUser.user!.id }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -63,7 +69,8 @@ Deno.serve(async (req) => {
       if (!user_id) throw new Error("Missing user_id");
       if (user_id === user.id) throw new Error("Cannot remove yourself");
 
-      // Delete role then user
+      // Delete permissions, role, then user
+      await supabaseAdmin.from("admin_permissions").delete().eq("user_id", user_id);
       await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
       const { error: delError } = await supabaseAdmin.auth.admin.deleteUser(user_id);
       if (delError) throw delError;
