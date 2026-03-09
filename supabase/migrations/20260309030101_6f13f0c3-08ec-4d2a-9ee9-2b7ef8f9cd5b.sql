@@ -1,0 +1,1 @@
+CREATE POLICY "Admin can update logs" ON public.attendance_logs FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
