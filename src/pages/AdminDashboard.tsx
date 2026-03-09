@@ -377,6 +377,12 @@ const AdminDashboard = () => {
                   setNewDesc={setNewDesc}
                   newDate={newDate}
                   setNewDate={setNewDate}
+                  newVenue={newVenue}
+                  setNewVenue={setNewVenue}
+                  newStartTime={newStartTime}
+                  setNewStartTime={setNewStartTime}
+                  newEndTime={newEndTime}
+                  setNewEndTime={setNewEndTime}
                   creating={creating}
                   handleCreateEvent={handleCreateEvent}
                   canCreateEvents={true}
@@ -402,6 +408,12 @@ const AdminDashboard = () => {
               setNewDesc={setNewDesc}
               newDate={newDate}
               setNewDate={setNewDate}
+              newVenue={newVenue}
+              setNewVenue={setNewVenue}
+              newStartTime={newStartTime}
+              setNewStartTime={setNewStartTime}
+              newEndTime={newEndTime}
+              setNewEndTime={setNewEndTime}
               creating={creating}
               handleCreateEvent={handleCreateEvent}
               canCreateEvents={userPermissions.includes("create_events")}
