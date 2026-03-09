@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Loader2, Radio } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import AppHeader from "@/components/AppHeader";
 
 interface PublicLog {
@@ -18,6 +19,8 @@ const LiveDashboard = () => {
   const [recentCheckins, setRecentCheckins] = useState<PublicLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  const checkInUrl = eventId ? `${window.location.origin}/checkin?event=${eventId}` : "";
 
   useEffect(() => {
     if (!eventId) { setError(true); setLoading(false); return; }
@@ -60,27 +63,39 @@ const LiveDashboard = () => {
         <h1 className="text-4xl md:text-6xl font-extrabold">{eventTitle}</h1>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-12 p-8">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <Users className="w-10 h-10 text-primary" />
-            <span className="text-8xl md:text-[10rem] font-extrabold tabular-nums leading-none">{totalCount}</span>
+      <div className="flex-1 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-12 p-8">
+        {/* Left: Counter + Recent */}
+        <div className="flex flex-col items-center gap-12 flex-1">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-4 mb-2">
+              <Users className="w-10 h-10 text-primary" />
+              <span className="text-8xl md:text-[10rem] font-extrabold tabular-nums leading-none">{totalCount}</span>
+            </div>
+            <p className="text-xl text-muted-foreground">Total Attendees</p>
           </div>
-          <p className="text-xl text-muted-foreground">Total Attendees</p>
+
+          <div className="w-full max-w-xl">
+            <h2 className="text-lg font-semibold mb-4 text-center text-muted-foreground">Recent Check-ins</h2>
+            <div className="space-y-2">
+              {recentCheckins.length === 0 ? (
+                <p className="text-center text-muted-foreground">Waiting for check-ins…</p>
+              ) : recentCheckins.map((r, i) => (
+                <div key={r.id} className={`flex items-center justify-between px-5 py-3 rounded-xl border border-border bg-card/60 backdrop-blur-sm transition-all ${i === 0 ? "ring-2 ring-primary/30" : ""}`}>
+                  <span className="font-semibold text-lg">{r.full_name}</span>
+                  <span className="text-muted-foreground">{r.company}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="w-full max-w-xl">
-          <h2 className="text-lg font-semibold mb-4 text-center text-muted-foreground">Recent Check-ins</h2>
-          <div className="space-y-2">
-            {recentCheckins.length === 0 ? (
-              <p className="text-center text-muted-foreground">Waiting for check-ins…</p>
-            ) : recentCheckins.map((r, i) => (
-              <div key={r.id} className={`flex items-center justify-between px-5 py-3 rounded-xl border border-border bg-card/60 backdrop-blur-sm transition-all ${i === 0 ? "ring-2 ring-primary/30" : ""}`}>
-                <span className="font-semibold text-lg">{r.full_name}</span>
-                <span className="text-muted-foreground">{r.company}</span>
-              </div>
-            ))}
+        {/* Right: QR Code */}
+        <div className="flex flex-col items-center gap-4 lg:sticky lg:top-32">
+          <div className="p-6 bg-white rounded-2xl shadow-lg border border-border">
+            <QRCodeSVG value={checkInUrl} size={200} />
           </div>
+          <p className="text-sm font-semibold text-primary text-center">Scan to Check In</p>
+          <p className="text-xs text-muted-foreground text-center max-w-[220px] break-all">{checkInUrl}</p>
         </div>
       </div>
     </div>
