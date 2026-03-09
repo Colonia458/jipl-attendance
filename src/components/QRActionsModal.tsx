@@ -18,7 +18,7 @@ interface QRActionsModalProps {
   endTime?: string | null;
 }
 
-const QRActionsModal = ({ open, onOpenChange, url, eventTitle }: QRActionsModalProps) => {
+const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime, endTime }: QRActionsModalProps) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = () => { navigator.clipboard.writeText(url); toast.success("URL copied!"); };
