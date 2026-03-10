@@ -323,6 +323,15 @@ const AdminDashboard = () => {
     pdf.text("Name & Signature", 14 + colWidth, yPos + 19);
     pdf.text("Date: _______________", 14 + colWidth, yPos + 25);
 
+    // Add page numbers
+    const totalPages = pdf.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setTextColor(150);
+      pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 6, { align: "center" });
+    }
+
     pdf.save(`${selectedEvent.title.replace(/\s+/g, "_")}_Report.pdf`);
     toast.success("PDF report downloaded");
   };

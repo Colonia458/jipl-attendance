@@ -76,21 +76,21 @@ const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime,
       // Add venue and time information
       let yOffset = 65;
       if (venue) {
-        pdf.setFontSize(11);
+        pdf.setFontSize(12);
         pdf.setTextColor(80);
-        pdf.text(`📍 ${venue}`, pageWidth / 2, yOffset, { align: "center" });
-        yOffset += 7;
+        pdf.text(`Venue: ${venue}`, pageWidth / 2, yOffset, { align: "center" });
+        yOffset += 8;
       }
       
       if (startTime || endTime) {
-        pdf.setFontSize(11);
+        pdf.setFontSize(12);
         pdf.setTextColor(80);
         const timeText = startTime && endTime 
-          ? `🕐 ${formatTime(startTime)} - ${formatTime(endTime)}`
+          ? `Time: ${formatTime(startTime)} - ${formatTime(endTime)}`
           : startTime 
-          ? `🕐 ${formatTime(startTime)}`
+          ? `Time: ${formatTime(startTime)}`
           : endTime 
-          ? `🕐 Until ${formatTime(endTime)}`
+          ? `Time: Until ${formatTime(endTime)}`
           : "";
         if (timeText) {
           pdf.text(timeText, pageWidth / 2, yOffset, { align: "center" });
