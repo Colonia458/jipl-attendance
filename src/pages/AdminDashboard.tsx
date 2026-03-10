@@ -272,17 +272,20 @@ const AdminDashboard = () => {
       headStyles: { fillColor: [154, 196, 75], textColor: [35, 31, 31] },
     });
 
-    // Sign-off footer section
-    const finalY = (pdf as any).lastAutoTable?.finalY || 150;
-    const footerY = finalY + 16;
+    // Sign-off footer section — always at the bottom of the page
     const pageHeight = pdf.internal.pageSize.getHeight();
+    const footerBlockHeight = 70; // total height needed for notes + signatures
+    const finalY = (pdf as any).lastAutoTable?.finalY || 150;
 
-    // Add new page if not enough space for footer
-    const neededSpace = 70;
-    let yPos = footerY;
-    if (footerY + neededSpace > pageHeight - 14) {
+    // If footer won't fit on this page, add a new page
+    let yPos: number;
+    if (finalY + 20 + footerBlockHeight > pageHeight - 14) {
       pdf.addPage();
-      yPos = 20;
+      // Place at bottom of the new page
+      yPos = pageHeight - 14 - footerBlockHeight;
+    } else {
+      // Place at bottom of the current page
+      yPos = pageHeight - 14 - footerBlockHeight;
     }
 
     // Notes section
@@ -291,10 +294,10 @@ const AdminDashboard = () => {
     pdf.setFontSize(10);
     pdf.setTextColor(80);
     pdf.text("Notes / Remarks:", 14, yPos);
-    yPos += 4;
-    // Draw lined area for notes
-    for (let i = 0; i < 4; i++) {
-      yPos += 8;
+    yPos += 5;
+    // Draw 3 lined rows with reasonable spacing
+    for (let i = 0; i < 3; i++) {
+      yPos += 6;
       pdf.line(14, yPos, pageWidth - 14, yPos);
     }
 
