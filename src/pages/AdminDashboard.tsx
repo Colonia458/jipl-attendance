@@ -47,6 +47,8 @@ interface LogRecord {
   phone_number: string;
   job_title: string;
   company: string;
+  designation_department?: string;
+  signature_url?: string;
   created_at: string;
   event_id: string | null;
 }
