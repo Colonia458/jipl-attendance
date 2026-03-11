@@ -12,6 +12,17 @@ interface PublicLog {
   created_at: string;
 }
 
+const HowToJoinBlock = () => (
+  <div className="mt-6 text-left bg-muted/50 rounded-xl border border-border p-5 max-w-xs w-full">
+    <h3 className="font-semibold text-sm mb-3 text-foreground">How to Join</h3>
+    <ol className="space-y-2 text-sm text-muted-foreground">
+      <li className="flex gap-2"><span className="font-bold text-primary">1.</span> Open your Camera or Google Lens.</li>
+      <li className="flex gap-2"><span className="font-bold text-primary">2.</span> Point it at the QR Code.</li>
+      <li className="flex gap-2"><span className="font-bold text-primary">3.</span> Tap the link that appears to sign the attendance sheet.</li>
+    </ol>
+  </div>
+);
+
 const LiveDashboard = () => {
   const { id: eventId } = useParams<{ id: string }>();
   const [eventTitle, setEventTitle] = useState("");
@@ -40,10 +51,8 @@ const LiveDashboard = () => {
     };
     fetchData();
 
-    // Poll every 5 seconds for real-time updates
     const interval = setInterval(fetchData, 5000);
 
-    // Also try realtime subscription (works when authenticated)
     const channel = supabase.channel(`live-${eventId}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "attendance_logs", filter: `event_id=eq.${eventId}` }, (payload) => {
       const n = payload.new as any;
       const rec: PublicLog = { id: n.id, full_name: n.full_name, company: n.company, created_at: n.created_at };
@@ -67,7 +76,6 @@ const LiveDashboard = () => {
         </div>
         <h1 className="text-4xl md:text-6xl font-extrabold">{eventTitle}</h1>
 
-        {/* Toggle */}
         <div className="mt-6 inline-flex items-center rounded-full border border-border bg-muted/50 p-1">
           <button
             onClick={() => setView("attendance")}
@@ -126,6 +134,7 @@ const LiveDashboard = () => {
             </div>
             <p className="text-lg font-semibold text-primary">Scan to Check In</p>
             <p className="text-sm text-muted-foreground text-center max-w-xs break-all">{checkInUrl}</p>
+            <HowToJoinBlock />
           </div>
         )}
       </div>

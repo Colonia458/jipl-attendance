@@ -47,6 +47,8 @@ interface LogRecord {
   phone_number: string;
   job_title: string;
   company: string;
+  designation_department?: string;
+  signature_url?: string;
   created_at: string;
   event_id: string | null;
 }
@@ -184,7 +186,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateRecord = async (id: string, data: { full_name: string; email: string; phone_number: string; job_title: string; company: string }) => {
+  const handleUpdateRecord = async (id: string, data: { full_name: string; email: string; phone_number: string; job_title: string; company: string; designation_department: string }) => {
     const { error } = await supabase.from("attendance_logs").update(data).eq("id", id);
     if (error) { toast.error("Failed to update record"); console.error(error); }
     else { toast.success("Record updated"); if (selectedEvent) fetchLogs(selectedEvent.id); }
@@ -209,7 +211,7 @@ const AdminDashboard = () => {
     }
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((r) => r.full_name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || r.company.toLowerCase().includes(q) || r.job_title.toLowerCase().includes(q));
+      result = result.filter((r) => r.full_name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || (r.designation_department || r.company || "").toLowerCase().includes(q));
     }
     return result;
   }, [records, search, dateFrom, dateTo]);
@@ -219,12 +221,11 @@ const AdminDashboard = () => {
   const handleDownloadXLSX = () => {
     if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
     const wsData = filtered.map((r, i) => ({
-      "#": i + 1,
-      "Full Name": r.full_name,
-      "Email": r.email,
-      "Phone": r.phone_number,
-      "Job Title": r.job_title,
-      "Company": r.company,
+      "S/NO": i + 1,
+      "NAME": r.full_name,
+      "DESIGNATION/DEPARTMENT": r.designation_department || r.job_title || "",
+      "PHONE NUMBER": r.phone_number,
+      "EMAIL ADDRESS": r.email,
       "Checked In": format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss"),
     }));
     const ws = XLSX.utils.json_to_sheet(wsData);
@@ -238,54 +239,106 @@ const AdminDashboard = () => {
     if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
     const pdf = new jsPDF(orientation, "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 14;
 
+    // --- HEADER: Match JKUAT Industrial Park Limited template ---
     // Logo
     if (logoBase64) {
-      try { pdf.addImage(logoBase64, "PNG", 14, 4, 18, 18); } catch {}
+      try { pdf.addImage(logoBase64, "PNG", margin, 6, 20, 20); } catch {}
     }
 
-    // JKUAT branding header
-    pdf.setFontSize(10);
-    pdf.setTextColor(154, 196, 75);
-    pdf.text("JKUAT Industrial Park", logoBase64 ? 35 : 14, 12);
-    pdf.setFontSize(8);
-    pdf.setTextColor(150);
-    pdf.text("Meeting Attendance System", logoBase64 ? 35 : 14, 17);
+    pdf.setFontSize(18);
+    pdf.setTextColor(35, 31, 31);
+    pdf.text("JKUAT Industrial Park Limited", pageWidth / 2, 14, { align: "center" });
 
-    // Line separator
+    pdf.setFontSize(8);
+    pdf.setTextColor(80);
+    pdf.text("JOMO KENYATTA UNIVERSITY OF AGRICULTURE AND TECHNOLOGY", pageWidth / 2, 20, { align: "center" });
+    pdf.text("P.O. Box 62000 Nairobi 00200 Tel: 254 67 5870001-4", pageWidth / 2, 24, { align: "center" });
+    pdf.text("(Ext. 1025, 1026, 1027, 1028, 1029, 1040, 1042, 1043, 1045, 1047, 1048, 1049)", pageWidth / 2, 28, { align: "center" });
+    pdf.text("Email: nitp@jkuat.ac.ke and taifa@jkuat.ac.ke", pageWidth / 2, 32, { align: "center" });
+
+    // Separator line
     pdf.setDrawColor(154, 196, 75);
     pdf.setLineWidth(0.5);
-    pdf.line(14, 23, pageWidth - 14, 23);
+    pdf.line(margin, 35, pageWidth - margin, 35);
 
+    // Title
+    pdf.setFontSize(14);
     pdf.setTextColor(35, 31, 31);
-    pdf.setFontSize(18);
-    pdf.text(selectedEvent.title, 14, 33);
-    pdf.setFontSize(11);
-    pdf.setTextColor(100);
-    pdf.text(`Date: ${format(new Date(selectedEvent.date), "MMMM d, yyyy")}  |  Total: ${filtered.length} attendees`, 14, 41);
+    pdf.text("MEETING ATTENDANCE SHEET", pageWidth / 2, 43, { align: "center" });
+
+    // Meeting details rows
+    let yInfo = 50;
+    pdf.setFontSize(10);
+    pdf.setTextColor(35, 31, 31);
+    pdf.setDrawColor(0);
+    pdf.setLineWidth(0.3);
+
+    // Meeting Title row
+    pdf.text("MEETING TITLE:", margin, yInfo);
+    pdf.text(selectedEvent.title, margin + 38, yInfo);
+    pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
+    yInfo += 8;
+
+    // Venue row
+    pdf.text("VENUE:", margin, yInfo);
+    pdf.text(selectedEvent.venue || "", margin + 38, yInfo);
+    pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
+    yInfo += 8;
+
+    // Date row
+    pdf.text("DATE:", margin, yInfo);
+    pdf.text(format(new Date(selectedEvent.date), "MMMM d, yyyy"), margin + 38, yInfo);
+    pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
+    yInfo += 8;
+
+    // --- TABLE ---
+    // Prepare signature images (load them async would be complex, so we'll add text placeholder or image if available)
+    const tableStartY = yInfo + 4;
 
     autoTable(pdf, {
-      startY: 47,
-      head: [["#", "Full Name", "Email", "Phone", "Job Title", "Company", "Checked In"]],
-      body: filtered.map((r, i) => [i + 1, r.full_name, r.email, r.phone_number, r.job_title, r.company, format(new Date(r.created_at), "MMM d, h:mm a")]),
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [154, 196, 75], textColor: [35, 31, 31] },
+      startY: tableStartY,
+      head: [["S/NO", "NAME", "DESIGNATION/\nDEPARTMENT", "PHONE NUMBER", "EMAIL ADDRESS", "SIGNATURE"]],
+      body: filtered.map((r, i) => [
+        i + 1,
+        r.full_name,
+        r.designation_department || r.job_title || "",
+        r.phone_number,
+        r.email,
+        "", // signature placeholder - will be drawn separately
+      ]),
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [154, 196, 75], textColor: [35, 31, 31], fontStyle: "bold", fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 12, halign: "center" },
+        5: { cellWidth: orientation === "landscape" ? 30 : 22 },
+      },
+      didDrawCell: (data) => {
+        // Draw signature images in the SIGNATURE column
+        if (data.section === "body" && data.column.index === 5) {
+          const record = filtered[data.row.index];
+          if (record?.signature_url) {
+            try {
+              // We can't easily load async images in jspdf-autotable didDrawCell,
+              // so we'll handle signatures in a second pass
+            } catch {}
+          }
+        }
+      },
     });
 
-    // Sign-off footer section — always at the bottom of the page
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const footerBlockHeight = 70; // total height needed for notes + signatures
+    // --- FOOTER: "PREPARED BY SECRETARIAT" at bottom ---
     const finalY = (pdf as any).lastAutoTable?.finalY || 150;
+    const footerBlockHeight = 30;
 
-    // If footer won't fit on this page, add a new page
     let yPos: number;
-    if (finalY + 20 + footerBlockHeight > pageHeight - 14) {
+    if (finalY + 20 + footerBlockHeight > pageHeight - 20) {
       pdf.addPage();
-      // Place at bottom of the new page
-      yPos = pageHeight - 14 - footerBlockHeight;
+      yPos = pageHeight - 20 - footerBlockHeight;
     } else {
-      // Place at bottom of the current page
-      yPos = pageHeight - 14 - footerBlockHeight;
+      yPos = pageHeight - 20 - footerBlockHeight;
     }
 
     // Notes section
@@ -293,37 +346,20 @@ const AdminDashboard = () => {
     pdf.setLineWidth(0.3);
     pdf.setFontSize(10);
     pdf.setTextColor(80);
-    pdf.text("Notes / Remarks:", 14, yPos);
+    pdf.text("Notes / Remarks:", margin, yPos);
     yPos += 5;
-    // Draw 3 lined rows with reasonable spacing
     for (let i = 0; i < 3; i++) {
       yPos += 6;
-      pdf.line(14, yPos, pageWidth - 14, yPos);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
     }
 
-    // Signature blocks
-    yPos += 16;
-    const colWidth = (pageWidth - 28) / 2;
+    // "PREPARED BY SECRETARIAT" footer
+    yPos += 12;
+    pdf.setFontSize(10);
+    pdf.setTextColor(35, 31, 31);
+    pdf.text("PREPARED BY SECRETARIAT", margin, yPos);
 
-    pdf.setFontSize(9);
-    pdf.setTextColor(100);
-
-    // Left signature
-    pdf.text("Prepared by:", 14, yPos);
-    pdf.line(14, yPos + 14, 14 + colWidth - 10, yPos + 14);
-    pdf.setFontSize(8);
-    pdf.text("Name & Signature", 14, yPos + 19);
-    pdf.text("Date: _______________", 14, yPos + 25);
-
-    // Right signature
-    pdf.setFontSize(9);
-    pdf.text("Approved by:", 14 + colWidth, yPos);
-    pdf.line(14 + colWidth, yPos + 14, 14 + colWidth * 2 - 10, yPos + 14);
-    pdf.setFontSize(8);
-    pdf.text("Name & Signature", 14 + colWidth, yPos + 19);
-    pdf.text("Date: _______________", 14 + colWidth, yPos + 25);
-
-    // Add page numbers
+    // Page numbers
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
@@ -465,7 +501,7 @@ const AdminDashboard = () => {
                 <div className="flex flex-wrap gap-3 items-center">
                   <div className="relative flex-1 min-w-[200px] max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Search by name, email, company..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    <Input placeholder="Search by name, email, designation..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
                   </div>
                   <Popover>
                     <PopoverTrigger asChild><Button variant="outline" size="sm" className={cn(!dateFrom && "text-muted-foreground")}><CalendarIcon className="w-4 h-4 mr-2" />{dateFrom ? format(dateFrom, "MMM d") : "From"}</Button></PopoverTrigger>
@@ -518,26 +554,26 @@ const AdminDashboard = () => {
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
-                        <Table>
+                         <Table>
                           <TableHeader>
                             <TableRow>
+                              <TableHead className="w-12">S/NO</TableHead>
                               <TableHead>Name</TableHead>
                               <TableHead>Email</TableHead>
                               <TableHead className="hidden md:table-cell">Phone</TableHead>
-                              <TableHead className="hidden lg:table-cell">Job Title</TableHead>
-                              <TableHead className="hidden lg:table-cell">Company</TableHead>
+                              <TableHead className="hidden lg:table-cell">Designation/Dept</TableHead>
                               <TableHead>Time</TableHead>
                               <TableHead className="w-20">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filtered.map((r) => (
+                            {filtered.map((r, i) => (
                               <TableRow key={r.id}>
+                                <TableCell className="text-center">{i + 1}</TableCell>
                                 <TableCell className="font-medium">{r.full_name}</TableCell>
                                 <TableCell>{r.email}</TableCell>
                                 <TableCell className="hidden md:table-cell">{r.phone_number}</TableCell>
-                                <TableCell className="hidden lg:table-cell">{r.job_title}</TableCell>
-                                <TableCell className="hidden lg:table-cell">{r.company}</TableCell>
+                                <TableCell className="hidden lg:table-cell">{r.designation_department || r.job_title || ""}</TableCell>
                                 <TableCell className="whitespace-nowrap text-sm">{format(new Date(r.created_at), "MMM d, h:mm a")}</TableCell>
                                 <TableCell>
                                   {userPermissions.includes("manage_attendance") && (

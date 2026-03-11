@@ -12,17 +12,18 @@ interface RecordData {
   phone_number: string;
   job_title: string;
   company: string;
+  designation_department?: string;
 }
 
 interface EditRecordDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record: RecordData | null;
-  onSave: (id: string, data: Omit<RecordData, "id">) => Promise<void>;
+  onSave: (id: string, data: { full_name: string; email: string; phone_number: string; job_title: string; company: string; designation_department: string }) => Promise<void>;
 }
 
 const EditRecordDialog = ({ open, onOpenChange, record, onSave }: EditRecordDialogProps) => {
-  const [form, setForm] = useState({ full_name: "", email: "", phone_number: "", job_title: "", company: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone_number: "", designation_department: "" });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -31,8 +32,7 @@ const EditRecordDialog = ({ open, onOpenChange, record, onSave }: EditRecordDial
         full_name: record.full_name,
         email: record.email,
         phone_number: record.phone_number,
-        job_title: record.job_title,
-        company: record.company,
+        designation_department: record.designation_department || record.job_title || "",
       });
     }
   }, [record]);
@@ -40,7 +40,15 @@ const EditRecordDialog = ({ open, onOpenChange, record, onSave }: EditRecordDial
   const handleSave = async () => {
     if (!record) return;
     setSaving(true);
-    await onSave(record.id, form);
+    await onSave(record.id, {
+      full_name: form.full_name,
+      email: form.email,
+      phone_number: form.phone_number,
+      designation_department: form.designation_department,
+      // Keep legacy fields in sync
+      job_title: form.designation_department,
+      company: form.designation_department,
+    });
     setSaving(false);
     onOpenChange(false);
   };
@@ -50,12 +58,22 @@ const EditRecordDialog = ({ open, onOpenChange, record, onSave }: EditRecordDial
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Edit Record</DialogTitle></DialogHeader>
         <div className="space-y-3 py-2">
-          {(["full_name", "email", "phone_number", "job_title", "company"] as const).map((key) => (
-            <div key={key} className="space-y-1">
-              <Label className="capitalize">{key.replace(/_/g, " ")}</Label>
-              <Input value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} />
-            </div>
-          ))}
+          <div className="space-y-1">
+            <Label>Name</Label>
+            <Input value={form.full_name} onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Email Address</Label>
+            <Input value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Phone Number</Label>
+            <Input value={form.phone_number} onChange={(e) => setForm((p) => ({ ...p, phone_number: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Designation / Department</Label>
+            <Input value={form.designation_department} onChange={(e) => setForm((p) => ({ ...p, designation_department: e.target.value }))} />
+          </div>
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>

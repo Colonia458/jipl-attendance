@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { CheckCircle2, ClipboardCheck, Loader2, AlertCircle, Pencil, MapPin, Clock } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
+import SignaturePad from "@/components/SignaturePad";
 
 const STORAGE_KEY = "checkin_user_data";
 
@@ -48,15 +49,15 @@ interface UserData {
   full_name: string;
   email: string;
   phone_number: string;
-  job_title: string;
-  company: string;
+  designation_department: string;
 }
 
 const CheckIn = () => {
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get("event");
 
-  const [form, setForm] = useState<UserData>({ full_name: "", email: "", phone_number: "07", job_title: "", company: "" });
+  const [form, setForm] = useState<UserData>({ full_name: "", email: "", phone_number: "07", designation_department: "" });
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
   const [hasStored, setHasStored] = useState(false);
@@ -92,9 +93,14 @@ const CheckIn = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setForm(parsed);
+        // Map legacy fields
+        setForm({
+          full_name: parsed.full_name || "",
+          email: parsed.email || "",
+          phone_number: parsed.phone_number || "07",
+          designation_department: parsed.designation_department || parsed.job_title || "",
+        });
         setHasStored(true);
-        // Check if already checked in for this event
         if (eventId && parsed.email) {
           checkExisting(parsed.email);
         }
@@ -106,7 +112,7 @@ const CheckIn = () => {
     if (!eventId) return;
     const { data } = await supabase
       .from("attendance_logs")
-      .select("id, full_name, email, phone_number, job_title, company")
+      .select("id, full_name, email, phone_number, designation_department")
       .eq("event_id", eventId)
       .eq("email", email.trim().toLowerCase())
       .maybeSingle();
@@ -116,8 +122,7 @@ const CheckIn = () => {
         full_name: data.full_name,
         email: data.email,
         phone_number: data.phone_number,
-        job_title: data.job_title,
-        company: data.company,
+        designation_department: (data as any).designation_department || "",
       });
       setCheckedIn(true);
     }
@@ -132,24 +137,50 @@ const CheckIn = () => {
     setHasStored(false);
   };
 
+  const uploadSignature = async (): Promise<string | null> => {
+    if (!signatureDataUrl || !eventId) return null;
+    try {
+      const res = await fetch(signatureDataUrl);
+      const blob = await res.blob();
+      const fileName = `${eventId}/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
+      const { error } = await supabase.storage.from("signatures").upload(fileName, blob, { contentType: "image/png" });
+      if (error) { console.error("Signature upload error:", error); return null; }
+      const { data: urlData } = supabase.storage.from("signatures").getPublicUrl(fileName);
+      return urlData.publicUrl;
+    } catch (err) { console.error("Signature upload error:", err); return null; }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { full_name, email, phone_number, job_title, company } = form;
-    if (!full_name.trim() || !email.trim() || !phone_number.trim() || !job_title.trim() || !company.trim()) { toast.error("Please fill in all fields"); return; }
+    const { full_name, email, phone_number, designation_department } = form;
+    if (!full_name.trim() || !email.trim() || !phone_number.trim() || !designation_department.trim()) { toast.error("Please fill in all fields"); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error("Please enter a valid email"); return; }
+    if (!signatureDataUrl && !existingRecordId) { toast.error("Please provide your signature"); return; }
 
     setLoading(true);
     try {
-      const payload = { full_name: full_name.trim(), email: email.trim().toLowerCase(), phone_number: phone_number.trim(), job_title: job_title.trim(), company: company.trim() };
+      let sigUrl: string | null = null;
+      if (signatureDataUrl) {
+        sigUrl = await uploadSignature();
+      }
+
+      const payload: any = {
+        full_name: full_name.trim(),
+        email: email.trim().toLowerCase(),
+        phone_number: phone_number.trim(),
+        designation_department: designation_department.trim(),
+        // Keep legacy fields populated for backward compatibility
+        job_title: designation_department.trim(),
+        company: designation_department.trim(),
+      };
+      if (sigUrl) payload.signature_url = sigUrl;
 
       if (isEditing && existingRecordId) {
-        // Update existing record
         const { error } = await supabase.from("attendance_logs").update(payload).eq("id", existingRecordId);
         if (error) throw error;
         toast.success("Your details have been updated!");
         setIsEditing(false);
       } else {
-        // Check for duplicate before inserting
         const { data: existing } = await supabase
           .from("attendance_logs")
           .select("id")
@@ -159,7 +190,6 @@ const CheckIn = () => {
 
         if (existing) {
           setExistingRecordId(existing.id);
-          // Update instead
           const { error } = await supabase.from("attendance_logs").update(payload).eq("id", existing.id);
           if (error) throw error;
           toast.success("Your details have been updated!");
@@ -170,7 +200,7 @@ const CheckIn = () => {
         }
       }
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ full_name: payload.full_name, email: payload.email, phone_number: payload.phone_number, designation_department: payload.designation_department }));
       setCheckedIn(true);
     } catch (err: any) { toast.error("Check-in failed. Please try again."); console.error(err); } finally { setLoading(false); }
   };
@@ -234,12 +264,25 @@ const CheckIn = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5"><Label htmlFor="full_name">Full Name</Label><Input id="full_name" value={form.full_name} onChange={(e) => updateField("full_name", e.target.value)} required /></div>
-              <div className="space-y-1.5"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required disabled={isEditing} /></div>
-              <div className="space-y-1.5"><Label htmlFor="phone_number">Phone Number</Label><Input id="phone_number" type="tel" placeholder="0712-345-678" value={form.phone_number} onChange={(e) => updateField("phone_number", e.target.value)} required /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label htmlFor="job_title">Job Title</Label><Input id="job_title" value={form.job_title} onChange={(e) => updateField("job_title", e.target.value)} required /></div>
-                <div className="space-y-1.5"><Label htmlFor="company">Company</Label><Input id="company" value={form.company} onChange={(e) => updateField("company", e.target.value)} required /></div>
+              <div className="space-y-1.5">
+                <Label htmlFor="full_name">Name</Label>
+                <Input id="full_name" value={form.full_name} onChange={(e) => updateField("full_name", e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="designation_department">Designation / Department</Label>
+                <Input id="designation_department" placeholder="e.g. Engineer / ICT Dept" value={form.designation_department} onChange={(e) => updateField("designation_department", e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone_number">Phone Number</Label>
+                <Input id="phone_number" type="tel" placeholder="0712-345-678" value={form.phone_number} onChange={(e) => updateField("phone_number", e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email Address</Label>
+                <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required disabled={isEditing} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Signature</Label>
+                <SignaturePad onSignatureChange={setSignatureDataUrl} />
               </div>
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>) : isEditing ? "Update Details" : hasStored ? "Confirm Attendance" : "Check In"}
