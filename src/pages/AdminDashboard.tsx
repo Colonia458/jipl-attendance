@@ -186,7 +186,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateRecord = async (id: string, data: { full_name: string; email: string; phone_number: string; job_title: string; company: string }) => {
+  const handleUpdateRecord = async (id: string, data: { full_name: string; email: string; phone_number: string; job_title: string; company: string; designation_department: string }) => {
     const { error } = await supabase.from("attendance_logs").update(data).eq("id", id);
     if (error) { toast.error("Failed to update record"); console.error(error); }
     else { toast.success("Record updated"); if (selectedEvent) fetchLogs(selectedEvent.id); }
