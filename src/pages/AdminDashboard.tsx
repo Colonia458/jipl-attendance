@@ -211,7 +211,7 @@ const AdminDashboard = () => {
     }
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((r) => r.full_name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || r.company.toLowerCase().includes(q) || r.job_title.toLowerCase().includes(q));
+      result = result.filter((r) => r.full_name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || (r.designation_department || r.company || "").toLowerCase().includes(q));
     }
     return result;
   }, [records, search, dateFrom, dateTo]);
