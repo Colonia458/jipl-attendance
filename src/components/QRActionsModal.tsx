@@ -98,15 +98,34 @@ const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime,
         }
       }
 
-      const qrSize = 120;
+      const qrSize = 100;
       const x = (pageWidth - qrSize) / 2;
       const y = yOffset + 5;
       pdf.addImage(dataUrl, "PNG", x, y, qrSize, qrSize);
 
-      pdf.setFontSize(10);
+      // URL below QR
+      const urlY = y + qrSize + 10;
+      pdf.setFontSize(9);
       pdf.setTextColor(140);
       const urlLines = pdf.splitTextToSize(url, pageWidth - 40);
-      pdf.text(urlLines, pageWidth / 2, y + qrSize + 15, { align: "center" });
+      pdf.text(urlLines, pageWidth / 2, urlY, { align: "center" });
+
+      // "How to Join" instructions
+      const instrY = urlY + urlLines.length * 5 + 10;
+      pdf.setFontSize(12);
+      pdf.setTextColor(35, 31, 31);
+      pdf.text("How to Join", pageWidth / 2, instrY, { align: "center" });
+
+      pdf.setFontSize(10);
+      pdf.setTextColor(80);
+      const instructions = [
+        "1. Open your Camera or Google Lens.",
+        "2. Point it at the QR Code.",
+        "3. Tap the link that appears to sign the attendance sheet.",
+      ];
+      instructions.forEach((line, i) => {
+        pdf.text(line, pageWidth / 2, instrY + 8 + i * 7, { align: "center" });
+      });
 
       pdf.save(`${eventTitle.replace(/\s+/g, "_")}_QR.pdf`);
       toast.success("PDF downloaded");
