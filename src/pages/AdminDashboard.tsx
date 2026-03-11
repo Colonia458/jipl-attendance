@@ -221,12 +221,11 @@ const AdminDashboard = () => {
   const handleDownloadXLSX = () => {
     if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
     const wsData = filtered.map((r, i) => ({
-      "#": i + 1,
-      "Full Name": r.full_name,
-      "Email": r.email,
-      "Phone": r.phone_number,
-      "Job Title": r.job_title,
-      "Company": r.company,
+      "S/NO": i + 1,
+      "NAME": r.full_name,
+      "DESIGNATION/DEPARTMENT": r.designation_department || r.job_title || "",
+      "PHONE NUMBER": r.phone_number,
+      "EMAIL ADDRESS": r.email,
       "Checked In": format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss"),
     }));
     const ws = XLSX.utils.json_to_sheet(wsData);
