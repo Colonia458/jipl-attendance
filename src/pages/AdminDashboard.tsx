@@ -501,7 +501,7 @@ const AdminDashboard = () => {
                 <div className="flex flex-wrap gap-3 items-center">
                   <div className="relative flex-1 min-w-[200px] max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Search by name, email, company..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    <Input placeholder="Search by name, email, designation..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
                   </div>
                   <Popover>
                     <PopoverTrigger asChild><Button variant="outline" size="sm" className={cn(!dateFrom && "text-muted-foreground")}><CalendarIcon className="w-4 h-4 mr-2" />{dateFrom ? format(dateFrom, "MMM d") : "From"}</Button></PopoverTrigger>
