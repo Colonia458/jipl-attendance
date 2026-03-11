@@ -554,26 +554,26 @@ const AdminDashboard = () => {
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
-                        <Table>
+                         <Table>
                           <TableHeader>
                             <TableRow>
+                              <TableHead className="w-12">S/NO</TableHead>
                               <TableHead>Name</TableHead>
                               <TableHead>Email</TableHead>
                               <TableHead className="hidden md:table-cell">Phone</TableHead>
-                              <TableHead className="hidden lg:table-cell">Job Title</TableHead>
-                              <TableHead className="hidden lg:table-cell">Company</TableHead>
+                              <TableHead className="hidden lg:table-cell">Designation/Dept</TableHead>
                               <TableHead>Time</TableHead>
                               <TableHead className="w-20">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filtered.map((r) => (
+                            {filtered.map((r, i) => (
                               <TableRow key={r.id}>
+                                <TableCell className="text-center">{i + 1}</TableCell>
                                 <TableCell className="font-medium">{r.full_name}</TableCell>
                                 <TableCell>{r.email}</TableCell>
                                 <TableCell className="hidden md:table-cell">{r.phone_number}</TableCell>
-                                <TableCell className="hidden lg:table-cell">{r.job_title}</TableCell>
-                                <TableCell className="hidden lg:table-cell">{r.company}</TableCell>
+                                <TableCell className="hidden lg:table-cell">{r.designation_department || r.job_title || ""}</TableCell>
                                 <TableCell className="whitespace-nowrap text-sm">{format(new Date(r.created_at), "MMM d, h:mm a")}</TableCell>
                                 <TableCell>
                                   {userPermissions.includes("manage_attendance") && (
