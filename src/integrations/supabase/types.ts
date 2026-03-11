@@ -66,32 +66,38 @@ export type Database = {
         Row: {
           company: string
           created_at: string
+          designation_department: string | null
           email: string
           event_id: string | null
           full_name: string
           id: string
           job_title: string
           phone_number: string
+          signature_url: string | null
         }
         Insert: {
           company: string
           created_at?: string
+          designation_department?: string | null
           email: string
           event_id?: string | null
           full_name: string
           id?: string
           job_title: string
           phone_number: string
+          signature_url?: string | null
         }
         Update: {
           company?: string
           created_at?: string
+          designation_department?: string | null
           email?: string
           event_id?: string | null
           full_name?: string
           id?: string
           job_title?: string
           phone_number?: string
+          signature_url?: string | null
         }
         Relationships: [
           {
