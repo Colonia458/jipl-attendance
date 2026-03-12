@@ -127,7 +127,7 @@ const AdminDashboard = () => {
 
   const fetchLogs = async (eventId: string) => {
     setLogsLoading(true);
-    const { data, error } = await supabase.from("attendance_logs").select("*").eq("event_id", eventId).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("attendance_logs").select("*").eq("event_id", eventId).order("created_at", { ascending: true });
     if (error) { toast.error("Failed to fetch logs"); console.error(error); }
     else setRecords(data || []);
     setLogsLoading(false);
@@ -251,9 +251,14 @@ const AdminDashboard = () => {
   const handlePrintPDF = async (orientation: "portrait" | "landscape" = "landscape") => {
     if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
 
+    // Sort chronologically (first in = #1) for formal document
+    const orderedRecords = [...filtered].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
     // Pre-load all signature images
     const sigImages: (string | null)[] = await Promise.all(
-      filtered.map((r) => r.signature_url ? loadImageAsBase64(r.signature_url) : Promise.resolve(null))
+      orderedRecords.map((r) => r.signature_url ? loadImageAsBase64(r.signature_url) : Promise.resolve(null))
     );
 
     const pdf = new jsPDF(orientation, "mm", "a4");
@@ -262,58 +267,70 @@ const AdminDashboard = () => {
     const margin = 14;
 
     // --- HEADER ---
+    const logoSize = 22;
     if (logoBase64) {
-      try { pdf.addImage(logoBase64, "PNG", margin, 6, 20, 20); } catch {}
+      try { pdf.addImage(logoBase64, "PNG", margin, 7, logoSize, logoSize); } catch {}
     }
 
-    pdf.setFontSize(18);
+    // Right-side mirror logo
+    if (logoBase64) {
+      try { pdf.addImage(logoBase64, "PNG", pageWidth - margin - logoSize, 7, logoSize, logoSize); } catch {}
+    }
+
+    pdf.setFontSize(16);
+    pdf.setFont("helvetica", "bold");
     pdf.setTextColor(35, 31, 31);
-    pdf.text("JKUAT Industrial Park Limited", pageWidth / 2, 14, { align: "center" });
+    pdf.text("JKUAT Industrial Park Limited", pageWidth / 2, 13, { align: "center" });
 
     pdf.setFontSize(8);
-    pdf.setTextColor(80);
-    pdf.text("JOMO KENYATTA UNIVERSITY OF AGRICULTURE AND TECHNOLOGY", pageWidth / 2, 20, { align: "center" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(60, 60, 60);
+    pdf.text("JOMO KENYATTA UNIVERSITY OF AGRICULTURE AND TECHNOLOGY", pageWidth / 2, 19, { align: "center" });
     pdf.text("INDUSTRIAL PARK", pageWidth / 2, 24, { align: "center" });
-    pdf.text("P.O. Box 62000 Nairobi 00200 Tel: 254 67 5870001-4", pageWidth / 2, 28, { align: "center" });
-    pdf.text("Email: nitp@jkuat.ac.ke and taifa@jkuat.ac.ke", pageWidth / 2, 32, { align: "center" });
+    pdf.text("P.O. Box 62000 Nairobi 00200 Tel: 254 67 5870001-4", pageWidth / 2, 29, { align: "center" });
+    pdf.text("Email: nitp@jkuat.ac.ke and taifa@jkuat.ac.ke", pageWidth / 2, 34, { align: "center" });
 
-    pdf.setDrawColor(154, 196, 75);
-    pdf.setLineWidth(0.5);
-    pdf.line(margin, 35, pageWidth - margin, 35);
+    // Thin separator line
+    pdf.setDrawColor(180, 180, 180);
+    pdf.setLineWidth(0.4);
+    pdf.line(margin, 37, pageWidth - margin, 37);
 
-    pdf.setFontSize(14);
+    // Section heading
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "bold");
     pdf.setTextColor(35, 31, 31);
-    pdf.text("MEETING ATTENDANCE SHEET", pageWidth / 2, 43, { align: "center" });
+    pdf.text("MEETING ATTENDANCE SHEET", pageWidth / 2, 45, { align: "center" });
 
-    // Meeting details
-    let yInfo = 50;
+    // Meeting detail fields
+    let yInfo = 53;
+    const labelX = margin;
+    const valueX = margin + 40;
     pdf.setFontSize(10);
-    pdf.setTextColor(35, 31, 31);
-    pdf.setDrawColor(0);
+    pdf.setDrawColor(100, 100, 100);
     pdf.setLineWidth(0.3);
 
-    pdf.text("MEETING TITLE:", margin, yInfo);
-    pdf.text(selectedEvent.title, margin + 38, yInfo);
-    pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
-    yInfo += 8;
+    const drawField = (label: string, value: string) => {
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(35, 31, 31);
+      pdf.text(label, labelX, yInfo);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(value, valueX, yInfo);
+      yInfo += 2;
+      pdf.line(margin, yInfo, pageWidth - margin, yInfo);
+      yInfo += 8;
+    };
 
-    pdf.text("VENUE:", margin, yInfo);
-    pdf.text(selectedEvent.venue || "", margin + 38, yInfo);
-    pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
-    yInfo += 8;
+    drawField("MEETING TITLE:", selectedEvent.title);
+    drawField("VENUE:", selectedEvent.venue || "");
+    drawField("DATE:", format(new Date(selectedEvent.date), "MMMM d, yyyy"));
 
-    pdf.text("DATE:", margin, yInfo);
-    pdf.text(format(new Date(selectedEvent.date), "MMMM d, yyyy"), margin + 38, yInfo);
-    pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
-    yInfo += 8;
-
-    const tableStartY = yInfo + 4;
-    const sigColWidth = orientation === "landscape" ? 32 : 24;
+    const tableStartY = yInfo + 2;
+    const sigColWidth = orientation === "landscape" ? 36 : 28;
 
     autoTable(pdf, {
       startY: tableStartY,
       head: [["S/NO", "NAME", "DESIGNATION/\nDEPARTMENT", "PHONE NUMBER", "EMAIL ADDRESS", "SIGNATURE"]],
-      body: filtered.map((r, i) => [
+      body: orderedRecords.map((r, i) => [
         i + 1,
         r.full_name,
         r.designation_department || r.job_title || "",
@@ -321,10 +338,29 @@ const AdminDashboard = () => {
         r.email,
         "",
       ]),
-      styles: { fontSize: 8, cellPadding: 3, minCellHeight: 12 },
-      headStyles: { fillColor: [154, 196, 75], textColor: [35, 31, 31], fontStyle: "bold", fontSize: 8 },
+      styles: {
+        fontSize: 9,
+        cellPadding: { top: 4, bottom: 4, left: 3, right: 3 },
+        minCellHeight: rowHeight,
+        valign: "middle",
+        lineColor: [160, 160, 160],
+        lineWidth: 0.2,
+      },
+      headStyles: {
+        fillColor: [245, 245, 245],
+        textColor: [35, 31, 31],
+        fontStyle: "bold",
+        fontSize: 8,
+        lineColor: [100, 100, 100],
+        lineWidth: 0.3,
+        halign: "center",
+      },
       columnStyles: {
-        0: { cellWidth: 12, halign: "center" },
+        0: { cellWidth: 14, halign: "center" },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: "auto" },
+        3: { cellWidth: 30 },
+        4: { cellWidth: "auto" },
         5: { cellWidth: sigColWidth },
       },
       didDrawCell: (data) => {
@@ -332,10 +368,11 @@ const AdminDashboard = () => {
           const sigBase64 = sigImages[data.row.index];
           if (sigBase64) {
             try {
-              const cellX = data.cell.x + 1;
-              const cellY = data.cell.y + 1;
-              const cellH = data.cell.height - 2;
-              const imgW = sigColWidth - 2;
+              const padding = 2;
+              const cellX = data.cell.x + padding;
+              const cellY = data.cell.y + padding;
+              const cellH = data.cell.height - padding * 2;
+              const imgW = sigColWidth - padding * 2;
               pdf.addImage(sigBase64, "PNG", cellX, cellY, imgW, cellH);
             } catch {}
           }
@@ -343,44 +380,47 @@ const AdminDashboard = () => {
       },
     });
 
-    // --- FOOTER ---
+    // --- FOOTER (on last page) ---
+    const lastPage = pdf.getNumberOfPages();
+    pdf.setPage(lastPage);
     const finalY = (pdf as any).lastAutoTable?.finalY || 150;
-    const footerBlockHeight = 30;
 
-    let yPos: number;
-    if (finalY + 20 + footerBlockHeight > pageHeight - 20) {
+    let yPos = finalY + 10;
+    // If not enough space for footer, add a new page
+    if (yPos + 35 > pageHeight - 15) {
       pdf.addPage();
-      yPos = pageHeight - 20 - footerBlockHeight;
-    } else {
-      yPos = pageHeight - 20 - footerBlockHeight;
+      yPos = 20;
     }
 
-    pdf.setDrawColor(200);
-    pdf.setLineWidth(0.3);
+    pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
-    pdf.setTextColor(80);
+    pdf.setTextColor(60, 60, 60);
     pdf.text("Notes / Remarks:", margin, yPos);
-    yPos += 5;
+    yPos += 2;
+    pdf.setDrawColor(160, 160, 160);
+    pdf.setLineWidth(0.3);
     for (let i = 0; i < 3; i++) {
-      yPos += 6;
+      yPos += 7;
       pdf.line(margin, yPos, pageWidth - margin, yPos);
     }
 
-    yPos += 12;
+    yPos += 10;
+    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
     pdf.setTextColor(35, 31, 31);
     pdf.text("PREPARED BY SECRETARIAT", margin, yPos);
 
-    // Page numbers
+    // Page numbers on all pages
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
+      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);
       pdf.setTextColor(150);
       pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 6, { align: "center" });
     }
 
-    pdf.save(`${selectedEvent.title.replace(/\s+/g, "_")}_Report.pdf`);
+    pdf.save(`${selectedEvent.title.replace(/\s+/g, "_")}_Attendance_Report.pdf`);
     toast.success("PDF report downloaded");
   };
 
