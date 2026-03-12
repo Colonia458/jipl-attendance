@@ -1,5 +1,8 @@
 import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Eraser } from "lucide-react";
 
 interface SignaturePadProps {
@@ -10,14 +13,16 @@ const SignaturePad = ({ onSignatureChange }: SignaturePadProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
+  const [useTyped, setUseTyped] = useState(false);
+  const [typedName, setTypedName] = useState("");
 
   useEffect(() => {
+    if (useTyped) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set up high-DPI canvas
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     canvas.width = rect.width * dpr;
@@ -27,7 +32,29 @@ const SignaturePad = ({ onSignatureChange }: SignaturePadProps) => {
     ctx.lineJoin = "round";
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#231F1F";
-  }, []);
+  }, [useTyped]);
+
+  // Generate typed signature as canvas data URL
+  useEffect(() => {
+    if (!useTyped) return;
+    if (!typedName.trim()) {
+      onSignatureChange(null);
+      return;
+    }
+    // Create an offscreen canvas to render the typed name in script font
+    const canvas = document.createElement("canvas");
+    canvas.width = 600;
+    canvas.height = 150;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 600, 150);
+    ctx.font = "italic 40px 'Georgia', 'Times New Roman', serif";
+    ctx.fillStyle = "#231F1F";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(typedName.trim(), 300, 75);
+    onSignatureChange(canvas.toDataURL("image/png"));
+  }, [useTyped, typedName, onSignatureChange]);
 
   const getPos = (e: React.TouchEvent | React.MouseEvent) => {
     const canvas = canvasRef.current;
@@ -79,31 +106,57 @@ const SignaturePad = ({ onSignatureChange }: SignaturePadProps) => {
     onSignatureChange(null);
   };
 
+  const handleToggle = (checked: boolean) => {
+    setUseTyped(checked);
+    setHasDrawn(false);
+    setTypedName("");
+    onSignatureChange(null);
+  };
+
   return (
     <div className="space-y-2">
-      <div className="relative border border-border rounded-lg overflow-hidden bg-white">
-        <canvas
-          ref={canvasRef}
-          className="w-full touch-none cursor-crosshair"
-          style={{ height: 120 }}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
-        {!hasDrawn && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-sm text-muted-foreground/50">Sign here</p>
-          </div>
-        )}
+      <div className="flex items-center justify-between">
+        <Label className="text-sm text-muted-foreground">Signature or Type Name</Label>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{useTyped ? "Type" : "Draw"}</span>
+          <Switch checked={useTyped} onCheckedChange={handleToggle} />
+        </div>
       </div>
-      {hasDrawn && (
-        <Button type="button" variant="ghost" size="sm" onClick={clear} className="h-7 text-xs">
-          <Eraser className="w-3 h-3 mr-1" /> Clear Signature
-        </Button>
+
+      {useTyped ? (
+        <Input
+          placeholder="Type your full name"
+          value={typedName}
+          onChange={(e) => setTypedName(e.target.value)}
+          className="font-serif italic text-lg"
+        />
+      ) : (
+        <>
+          <div className="relative border border-border rounded-lg overflow-hidden bg-white">
+            <canvas
+              ref={canvasRef}
+              className="w-full touch-none cursor-crosshair"
+              style={{ height: 120 }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+            {!hasDrawn && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <p className="text-sm text-muted-foreground/50">Sign here</p>
+              </div>
+            )}
+          </div>
+          {hasDrawn && (
+            <Button type="button" variant="ghost" size="sm" onClick={clear} className="h-7 text-xs">
+              <Eraser className="w-3 h-3 mr-1" /> Clear Signature
+            </Button>
+          )}
+        </>
       )}
     </div>
   );

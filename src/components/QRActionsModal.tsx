@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Copy, Download, FileText } from "lucide-react";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
+import { format } from "date-fns";
 
 interface QRActionsModalProps {
   open: boolean;
@@ -16,9 +17,10 @@ interface QRActionsModalProps {
   venue?: string | null;
   startTime?: string | null;
   endTime?: string | null;
+  eventDate?: string | null;
 }
 
-const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime, endTime }: QRActionsModalProps) => {
+const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime, endTime, eventDate }: QRActionsModalProps) => {
   const qrRef = useRef<HTMLDivElement>(null);
 
   const formatTime = (time: string | null | undefined) => {
@@ -51,72 +53,101 @@ const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime,
       const pdf = new jsPDF("portrait", "mm", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
 
-      // JKUAT branding
-      pdf.setFontSize(12);
-      pdf.setTextColor(154, 196, 75);
-      pdf.text("JKUAT Industrial Park", pageWidth / 2, 20, { align: "center" });
+      // JKUAT branding header
+      pdf.setFontSize(16);
+      pdf.setTextColor(35, 31, 31);
+      pdf.text("JKUAT Industrial Park Limited", pageWidth / 2, 22, { align: "center" });
 
       pdf.setFontSize(9);
-      pdf.setTextColor(150);
-      pdf.text("Meeting Attendance System", pageWidth / 2, 27, { align: "center" });
+      pdf.setTextColor(100);
+      pdf.text("Meeting Attendance System", pageWidth / 2, 29, { align: "center" });
 
       // Separator
       pdf.setDrawColor(154, 196, 75);
       pdf.setLineWidth(0.5);
-      pdf.line(30, 32, pageWidth - 30, 32);
+      pdf.line(30, 34, pageWidth - 30, 34);
 
-      pdf.setTextColor(35, 31, 31);
-      pdf.setFontSize(24);
-      pdf.text(eventTitle, pageWidth / 2, 48, { align: "center" });
+      // Meeting metadata - large and legible
+      let yOffset = 50;
 
       pdf.setFontSize(14);
-      pdf.setTextColor(100);
-      pdf.text("Scan to Check In", pageWidth / 2, 58, { align: "center" });
+      pdf.setTextColor(80);
+      pdf.text("Meeting Title:", pageWidth / 2, yOffset, { align: "center" });
+      yOffset += 9;
+      pdf.setFontSize(22);
+      pdf.setTextColor(35, 31, 31);
+      pdf.text(eventTitle, pageWidth / 2, yOffset, { align: "center" });
+      yOffset += 12;
 
-      // Add venue and time information
-      let yOffset = 65;
       if (venue) {
-        pdf.setFontSize(12);
+        pdf.setFontSize(14);
         pdf.setTextColor(80);
-        pdf.text(`Venue: ${venue}`, pageWidth / 2, yOffset, { align: "center" });
+        pdf.text("Venue:", pageWidth / 2, yOffset, { align: "center" });
         yOffset += 8;
-      }
-      
-      if (startTime || endTime) {
-        pdf.setFontSize(12);
-        pdf.setTextColor(80);
-        const timeText = startTime && endTime 
-          ? `Time: ${formatTime(startTime)} - ${formatTime(endTime)}`
-          : startTime 
-          ? `Time: ${formatTime(startTime)}`
-          : endTime 
-          ? `Time: Until ${formatTime(endTime)}`
-          : "";
-        if (timeText) {
-          pdf.text(timeText, pageWidth / 2, yOffset, { align: "center" });
-          yOffset += 10;
-        }
+        pdf.setFontSize(18);
+        pdf.setTextColor(35, 31, 31);
+        pdf.text(venue, pageWidth / 2, yOffset, { align: "center" });
+        yOffset += 12;
       }
 
-      const qrSize = 100;
+      if (eventDate) {
+        pdf.setFontSize(14);
+        pdf.setTextColor(80);
+        pdf.text("Date:", pageWidth / 2, yOffset, { align: "center" });
+        yOffset += 8;
+        pdf.setFontSize(18);
+        pdf.setTextColor(35, 31, 31);
+        pdf.text(format(new Date(eventDate + "T00:00:00"), "MMMM d, yyyy"), pageWidth / 2, yOffset, { align: "center" });
+        yOffset += 12;
+      }
+
+      if (startTime || endTime) {
+        pdf.setFontSize(14);
+        pdf.setTextColor(80);
+        pdf.text("Time:", pageWidth / 2, yOffset, { align: "center" });
+        yOffset += 8;
+        pdf.setFontSize(18);
+        pdf.setTextColor(35, 31, 31);
+        const timeText = startTime && endTime
+          ? `${formatTime(startTime)} - ${formatTime(endTime)}`
+          : startTime
+          ? `${formatTime(startTime)}`
+          : `Until ${formatTime(endTime)}`;
+        pdf.text(timeText, pageWidth / 2, yOffset, { align: "center" });
+        yOffset += 12;
+      }
+
+      // Separator
+      pdf.setDrawColor(200);
+      pdf.setLineWidth(0.3);
+      pdf.line(40, yOffset, pageWidth - 40, yOffset);
+      yOffset += 8;
+
+      // "Scan to Check In" label
+      pdf.setFontSize(16);
+      pdf.setTextColor(154, 196, 75);
+      pdf.text("Scan to Check In", pageWidth / 2, yOffset, { align: "center" });
+      yOffset += 8;
+
+      // QR code
+      const qrSize = 90;
       const x = (pageWidth - qrSize) / 2;
-      const y = yOffset + 5;
-      pdf.addImage(dataUrl, "PNG", x, y, qrSize, qrSize);
+      pdf.addImage(dataUrl, "PNG", x, yOffset, qrSize, qrSize);
 
       // URL below QR
-      const urlY = y + qrSize + 10;
-      pdf.setFontSize(9);
+      const urlY = yOffset + qrSize + 8;
+      pdf.setFontSize(8);
       pdf.setTextColor(140);
       const urlLines = pdf.splitTextToSize(url, pageWidth - 40);
       pdf.text(urlLines, pageWidth / 2, urlY, { align: "center" });
 
       // "How to Join" instructions
-      const instrY = urlY + urlLines.length * 5 + 10;
-      pdf.setFontSize(12);
+      const instrY = urlY + urlLines.length * 4 + 10;
+      pdf.setFontSize(13);
       pdf.setTextColor(35, 31, 31);
       pdf.text("How to Join", pageWidth / 2, instrY, { align: "center" });
 
-      pdf.setFontSize(10);
+      pdf.setFontSize(11);
       pdf.setTextColor(80);
       const instructions = [
         "1. Open your Camera or Google Lens.",
@@ -124,7 +155,7 @@ const QRActionsModal = ({ open, onOpenChange, url, eventTitle, venue, startTime,
         "3. Tap the link that appears to sign the attendance sheet.",
       ];
       instructions.forEach((line, i) => {
-        pdf.text(line, pageWidth / 2, instrY + 8 + i * 7, { align: "center" });
+        pdf.text(line, pageWidth / 2, instrY + 9 + i * 8, { align: "center" });
       });
 
       pdf.save(`${eventTitle.replace(/\s+/g, "_")}_QR.pdf`);

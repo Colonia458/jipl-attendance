@@ -28,7 +28,7 @@ const EventInfoBanner = ({ date, venue, startTime, endTime }: { date: string | n
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
       {date && (
         <span className="flex items-center gap-1">
-          📅 {format(new Date(date + "T00:00:00"), "MMMM d, yyyy")}
+          {format(new Date(date + "T00:00:00"), "MMMM d, yyyy")}
         </span>
       )}
       {venue && (
@@ -38,7 +38,7 @@ const EventInfoBanner = ({ date, venue, startTime, endTime }: { date: string | n
       )}
       {startTime && (
         <span className="flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5" /> {formatTime12(startTime)}{endTime ? ` – ${formatTime12(endTime)}` : ""}
+          <Clock className="w-3.5 h-3.5" /> {formatTime12(startTime)}{endTime ? ` - ${formatTime12(endTime)}` : ""}
         </span>
       )}
     </div>
@@ -93,7 +93,6 @@ const CheckIn = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        // Map legacy fields
         setForm({
           full_name: parsed.full_name || "",
           email: parsed.email || "",
@@ -155,7 +154,6 @@ const CheckIn = () => {
     const { full_name, email, phone_number, designation_department } = form;
     if (!full_name.trim() || !email.trim() || !phone_number.trim() || !designation_department.trim()) { toast.error("Please fill in all fields"); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error("Please enter a valid email"); return; }
-    if (!signatureDataUrl && !existingRecordId) { toast.error("Please provide your signature"); return; }
 
     setLoading(true);
     try {
@@ -169,7 +167,6 @@ const CheckIn = () => {
         email: email.trim().toLowerCase(),
         phone_number: phone_number.trim(),
         designation_department: designation_department.trim(),
-        // Keep legacy fields populated for backward compatibility
         job_title: designation_department.trim(),
         company: designation_department.trim(),
       };
@@ -281,7 +278,6 @@ const CheckIn = () => {
                 <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required disabled={isEditing} />
               </div>
               <div className="space-y-1.5">
-                <Label>Signature</Label>
                 <SignaturePad onSignatureChange={setSignatureDataUrl} />
               </div>
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
