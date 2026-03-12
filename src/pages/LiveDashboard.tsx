@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Loader2, Radio, QrCode, BarChart3 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { format } from "date-fns";
 import AppHeader from "@/components/AppHeader";
 
 interface PublicLog {
@@ -11,6 +12,10 @@ interface PublicLog {
   company: string;
   created_at: string;
 }
+
+const formatTime12 = (dateStr: string) => {
+  return format(new Date(dateStr), "hh:mm a");
+};
 
 const HowToJoinBlock = () => (
   <div className="mt-6 text-left bg-muted/50 rounded-xl border border-border p-5 max-w-xs w-full">
@@ -117,11 +122,11 @@ const LiveDashboard = () => {
               <h2 className="text-lg font-semibold mb-4 text-center text-muted-foreground">Recent Check-ins</h2>
               <div className="space-y-2">
                 {recentCheckins.length === 0 ? (
-                  <p className="text-center text-muted-foreground">Waiting for check-ins…</p>
+                  <p className="text-center text-muted-foreground">Waiting for check-ins...</p>
                 ) : recentCheckins.map((r, i) => (
                   <div key={r.id} className={`flex items-center justify-between px-5 py-3 rounded-xl border border-border bg-card/60 backdrop-blur-sm transition-all ${i === 0 ? "ring-2 ring-primary/30" : ""}`}>
                     <span className="font-semibold text-lg">{r.full_name}</span>
-                    <span className="text-muted-foreground">{r.company}</span>
+                    <span className="text-muted-foreground text-sm">{formatTime12(r.created_at)}</span>
                   </div>
                 ))}
               </div>
