@@ -235,15 +235,33 @@ const AdminDashboard = () => {
     toast.success("XLSX downloaded");
   };
 
-  const handlePrintPDF = (orientation: "portrait" | "landscape" = "landscape") => {
+  const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch { return null; }
+  };
+
+  const handlePrintPDF = async (orientation: "portrait" | "landscape" = "landscape") => {
     if (!selectedEvent || filtered.length === 0) { toast.error("No records to export"); return; }
+
+    // Pre-load all signature images
+    const sigImages: (string | null)[] = await Promise.all(
+      filtered.map((r) => r.signature_url ? loadImageAsBase64(r.signature_url) : Promise.resolve(null))
+    );
+
     const pdf = new jsPDF(orientation, "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 14;
 
-    // --- HEADER: Match JKUAT Industrial Park Limited template ---
-    // Logo
+    // --- HEADER ---
     if (logoBase64) {
       try { pdf.addImage(logoBase64, "PNG", margin, 6, 20, 20); } catch {}
     }
@@ -255,48 +273,42 @@ const AdminDashboard = () => {
     pdf.setFontSize(8);
     pdf.setTextColor(80);
     pdf.text("JOMO KENYATTA UNIVERSITY OF AGRICULTURE AND TECHNOLOGY", pageWidth / 2, 20, { align: "center" });
-    pdf.text("P.O. Box 62000 Nairobi 00200 Tel: 254 67 5870001-4", pageWidth / 2, 24, { align: "center" });
-    pdf.text("(Ext. 1025, 1026, 1027, 1028, 1029, 1040, 1042, 1043, 1045, 1047, 1048, 1049)", pageWidth / 2, 28, { align: "center" });
+    pdf.text("INDUSTRIAL PARK", pageWidth / 2, 24, { align: "center" });
+    pdf.text("P.O. Box 62000 Nairobi 00200 Tel: 254 67 5870001-4", pageWidth / 2, 28, { align: "center" });
     pdf.text("Email: nitp@jkuat.ac.ke and taifa@jkuat.ac.ke", pageWidth / 2, 32, { align: "center" });
 
-    // Separator line
     pdf.setDrawColor(154, 196, 75);
     pdf.setLineWidth(0.5);
     pdf.line(margin, 35, pageWidth - margin, 35);
 
-    // Title
     pdf.setFontSize(14);
     pdf.setTextColor(35, 31, 31);
     pdf.text("MEETING ATTENDANCE SHEET", pageWidth / 2, 43, { align: "center" });
 
-    // Meeting details rows
+    // Meeting details
     let yInfo = 50;
     pdf.setFontSize(10);
     pdf.setTextColor(35, 31, 31);
     pdf.setDrawColor(0);
     pdf.setLineWidth(0.3);
 
-    // Meeting Title row
     pdf.text("MEETING TITLE:", margin, yInfo);
     pdf.text(selectedEvent.title, margin + 38, yInfo);
     pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
     yInfo += 8;
 
-    // Venue row
     pdf.text("VENUE:", margin, yInfo);
     pdf.text(selectedEvent.venue || "", margin + 38, yInfo);
     pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
     yInfo += 8;
 
-    // Date row
     pdf.text("DATE:", margin, yInfo);
     pdf.text(format(new Date(selectedEvent.date), "MMMM d, yyyy"), margin + 38, yInfo);
     pdf.line(margin, yInfo + 2, pageWidth - margin, yInfo + 2);
     yInfo += 8;
 
-    // --- TABLE ---
-    // Prepare signature images (load them async would be complex, so we'll add text placeholder or image if available)
     const tableStartY = yInfo + 4;
+    const sigColWidth = orientation === "landscape" ? 32 : 24;
 
     autoTable(pdf, {
       startY: tableStartY,
@@ -307,29 +319,31 @@ const AdminDashboard = () => {
         r.designation_department || r.job_title || "",
         r.phone_number,
         r.email,
-        "", // signature placeholder - will be drawn separately
+        "",
       ]),
-      styles: { fontSize: 8, cellPadding: 3 },
+      styles: { fontSize: 8, cellPadding: 3, minCellHeight: 12 },
       headStyles: { fillColor: [154, 196, 75], textColor: [35, 31, 31], fontStyle: "bold", fontSize: 8 },
       columnStyles: {
         0: { cellWidth: 12, halign: "center" },
-        5: { cellWidth: orientation === "landscape" ? 30 : 22 },
+        5: { cellWidth: sigColWidth },
       },
       didDrawCell: (data) => {
-        // Draw signature images in the SIGNATURE column
         if (data.section === "body" && data.column.index === 5) {
-          const record = filtered[data.row.index];
-          if (record?.signature_url) {
+          const sigBase64 = sigImages[data.row.index];
+          if (sigBase64) {
             try {
-              // We can't easily load async images in jspdf-autotable didDrawCell,
-              // so we'll handle signatures in a second pass
+              const cellX = data.cell.x + 1;
+              const cellY = data.cell.y + 1;
+              const cellH = data.cell.height - 2;
+              const imgW = sigColWidth - 2;
+              pdf.addImage(sigBase64, "PNG", cellX, cellY, imgW, cellH);
             } catch {}
           }
         }
       },
     });
 
-    // --- FOOTER: "PREPARED BY SECRETARIAT" at bottom ---
+    // --- FOOTER ---
     const finalY = (pdf as any).lastAutoTable?.finalY || 150;
     const footerBlockHeight = 30;
 
@@ -341,7 +355,6 @@ const AdminDashboard = () => {
       yPos = pageHeight - 20 - footerBlockHeight;
     }
 
-    // Notes section
     pdf.setDrawColor(200);
     pdf.setLineWidth(0.3);
     pdf.setFontSize(10);
@@ -353,7 +366,6 @@ const AdminDashboard = () => {
       pdf.line(margin, yPos, pageWidth - margin, yPos);
     }
 
-    // "PREPARED BY SECRETARIAT" footer
     yPos += 12;
     pdf.setFontSize(10);
     pdf.setTextColor(35, 31, 31);
