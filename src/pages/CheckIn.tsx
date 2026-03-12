@@ -136,19 +136,6 @@ const CheckIn = () => {
     setHasStored(false);
   };
 
-  const uploadSignature = async (): Promise<string | null> => {
-    if (!signatureDataUrl || !eventId) return null;
-    try {
-      const res = await fetch(signatureDataUrl);
-      const blob = await res.blob();
-      const fileName = `${eventId}/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
-      const { error } = await supabase.storage.from("signatures").upload(fileName, blob, { contentType: "image/png" });
-      if (error) { console.error("Signature upload error:", error); return null; }
-      const { data: urlData } = supabase.storage.from("signatures").getPublicUrl(fileName);
-      return urlData.publicUrl;
-    } catch (err) { console.error("Signature upload error:", err); return null; }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { full_name, email, phone_number, designation_department } = form;
@@ -157,11 +144,6 @@ const CheckIn = () => {
 
     setLoading(true);
     try {
-      let sigUrl: string | null = null;
-      if (signatureDataUrl) {
-        sigUrl = await uploadSignature();
-      }
-
       const payload: any = {
         full_name: full_name.trim(),
         email: email.trim().toLowerCase(),
@@ -170,7 +152,7 @@ const CheckIn = () => {
         job_title: designation_department.trim(),
         company: designation_department.trim(),
       };
-      if (sigUrl) payload.signature_url = sigUrl;
+      if (signatureDataUrl) payload.signature_url = signatureDataUrl;
 
       if (isEditing && existingRecordId) {
         const { error } = await supabase.from("attendance_logs").update(payload).eq("id", existingRecordId);
