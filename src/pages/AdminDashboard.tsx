@@ -633,7 +633,7 @@ const AdminDashboard = () => {
         )}
       </main>
 
-      <QRActionsModal open={!!qrModalEvent} onOpenChange={(v) => { if (!v) setQrModalEvent(null); }} url={qrModalEvent ? checkInUrl(qrModalEvent.id) : ""} eventTitle={qrModalEvent?.title || ""} venue={qrModalEvent?.venue} startTime={qrModalEvent?.start_time} endTime={qrModalEvent?.end_time} />
+      <QRActionsModal open={!!qrModalEvent} onOpenChange={(v) => { if (!v) setQrModalEvent(null); }} url={qrModalEvent ? checkInUrl(qrModalEvent.id) : ""} eventTitle={qrModalEvent?.title || ""} venue={qrModalEvent?.venue} startTime={qrModalEvent?.start_time} endTime={qrModalEvent?.end_time} eventDate={qrModalEvent?.date} />
       <DeleteEventDialog open={!!deleteEvent} onOpenChange={(v) => { if (!v) setDeleteEvent(null); }} eventTitle={deleteEvent?.title || ""} onConfirm={handleDeleteEvent} />
       <EditEventDialog open={!!editEvent} onOpenChange={(v) => { if (!v) setEditEvent(null); }} event={editEvent} onSave={handleUpdateEvent} />
       <EditRecordDialog open={!!editRecord} onOpenChange={(v) => { if (!v) setEditRecord(null); }} record={editRecord} onSave={handleUpdateRecord} />
