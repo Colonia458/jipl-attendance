@@ -142,33 +142,6 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
-        Row: {
-          created_at: string
-          department: string
-          full_name: string
-          id: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          department?: string
-          full_name?: string
-          id: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          department?: string
-          full_name?: string
-          id?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string
@@ -229,7 +202,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_user_status: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
