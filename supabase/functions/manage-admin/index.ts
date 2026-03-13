@@ -47,10 +47,11 @@ Deno.serve(async (req) => {
       });
       if (createError) throw createError;
 
-      // Assign role
+      // Assign role — regular admins start as 'pending', super_admins are immediately active
+      const status = role === "super_admin" ? "active" : "pending";
       const { error: roleError } = await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: newUser.user!.id, role });
+        .insert({ user_id: newUser.user!.id, role, status });
       if (roleError) throw roleError;
 
       // Assign permissions for regular admins
@@ -61,6 +62,21 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, user_id: newUser.user!.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "approve") {
+      if (!user_id) throw new Error("Missing user_id");
+
+      const { error: approveError } = await supabaseAdmin
+        .from("user_roles")
+        .update({ status: "active" })
+        .eq("user_id", user_id);
+      if (approveError) throw approveError;
+
+      return new Response(
+        JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

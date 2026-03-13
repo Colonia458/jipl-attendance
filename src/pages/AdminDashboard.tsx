@@ -127,7 +127,7 @@ const AdminDashboard = () => {
 
   const fetchLogs = async (eventId: string) => {
     setLogsLoading(true);
-    const { data, error } = await supabase.from("attendance_logs").select("*").eq("event_id", eventId).order("created_at", { ascending: true });
+    const { data, error } = await supabase.from("attendance_logs").select("*").eq("event_id", eventId).order("created_at", { ascending: false });
     if (error) { toast.error("Failed to fetch logs"); console.error(error); }
     else setRecords(data || []);
     setLogsLoading(false);

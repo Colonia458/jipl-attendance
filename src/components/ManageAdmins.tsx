@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Shield, ShieldCheck, Settings } from "lucide-react";
+import { Loader2, Plus, Trash2, Shield, ShieldCheck, Settings, Check, X, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface AdminUser {
@@ -18,6 +18,7 @@ interface AdminUser {
   email: string;
   role: "super_admin" | "admin";
   created_at: string;
+  status: string;
 }
 
 const ALL_PERMISSIONS = [
@@ -28,6 +29,7 @@ const ALL_PERMISSIONS = [
 
 const ManageAdmins = () => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [pendingAdmins, setPendingAdmins] = useState<AdminUser[]>([]);
   const [adminPermissions, setAdminPermissions] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -54,10 +56,13 @@ const ManageAdmins = () => {
       toast.error("Failed to load admins");
       console.error(error);
     } else {
-      const adminList = (data as AdminUser[]) || [];
-      setAdmins(adminList);
-      // Fetch permissions for all admins
-      const allUserIds = adminList.filter(a => a.role === "admin").map(a => a.user_id);
+      const allAdmins = (data as AdminUser[]) || [];
+      const pending = allAdmins.filter(a => a.status === "pending");
+      const active = allAdmins.filter(a => a.status !== "pending");
+      setPendingAdmins(pending);
+      setAdmins(active);
+      // Fetch permissions for active regular admins
+      const allUserIds = active.filter(a => a.role === "admin").map(a => a.user_id);
       if (allUserIds.length > 0) {
         const { data: perms } = await supabase
           .from("admin_permissions" as any)
@@ -85,7 +90,7 @@ const ManageAdmins = () => {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
-      toast.success(`Admin ${email} created`);
+      toast.success(`Admin ${email} created — pending approval`);
       setEmail("");
       setPassword("");
       setRole("admin");
@@ -95,6 +100,36 @@ const ManageAdmins = () => {
       toast.error(err.message || "Failed to create admin");
     }
     setCreating(false);
+  };
+
+  const handleApprove = async (userId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("manage-admin", {
+        body: { action: "approve", user_id: userId },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
+      toast.success("Admin approved — they can now log in");
+      fetchAdmins();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve admin");
+    }
+  };
+
+  const handleReject = async (userId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("manage-admin", {
+        body: { action: "delete", user_id: userId },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
+      toast.success("Admin request rejected");
+      fetchAdmins();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reject admin");
+    }
   };
 
   const handleDelete = async (userId: string) => {
@@ -116,9 +151,7 @@ const ManageAdmins = () => {
     if (!permDialogAdmin) return;
     setSavingPerms(true);
     try {
-      // Delete existing permissions
       await supabase.from("admin_permissions" as any).delete().eq("user_id", permDialogAdmin.user_id);
-      // Insert new permissions
       if (editPerms.length > 0) {
         const rows = editPerms.map(p => ({ user_id: permDialogAdmin.user_id, permission: p }));
         const { error } = await supabase.from("admin_permissions" as any).insert(rows);
@@ -192,6 +225,79 @@ const ManageAdmins = () => {
         </Dialog>
       </div>
 
+      {/* Pending Requests */}
+      {pendingAdmins.length > 0 && (
+        <Card className="glass-card border-amber-200 dark:border-amber-800 overflow-hidden">
+          <div className="px-4 py-3 border-b border-amber-100 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="font-semibold text-amber-800 dark:text-amber-400 text-sm">
+              Pending Requests ({pendingAdmins.length})
+            </span>
+          </div>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="w-40">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingAdmins.map((a) => (
+                  <TableRow key={a.user_id} className="bg-amber-50/30 dark:bg-amber-950/10">
+                    <TableCell className="font-medium">{a.email}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-700">
+                        {a.role === "super_admin" ? "Super Admin" : "Admin"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                          onClick={() => handleApprove(a.user_id)}
+                          data-testid={`button-approve-${a.user_id}`}
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-destructive hover:text-destructive"
+                              data-testid={`button-reject-${a.user_id}`}
+                            >
+                              <X className="w-3.5 h-3.5 mr-1" /> Reject
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Reject this request?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete {a.email}'s account.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleReject(a.user_id)}>Reject</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Admins */}
       <Card className="glass-card overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
