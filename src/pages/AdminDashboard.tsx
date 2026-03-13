@@ -89,6 +89,10 @@ const AdminDashboard = () => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/admin"); return; }
+      // Check user approval status
+      const { data: userStatus } = await supabase.rpc("get_user_status", { _user_id: session.user.id });
+      if (userStatus === "pending") { navigate("/admin/pending"); return; }
+      if (userStatus === "rejected") { await supabase.auth.signOut(); navigate("/admin"); return; }
       // Check if super_admin
       const { data: hasRole } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "super_admin" });
       const isSA = !!hasRole;
