@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import CheckIn from "./pages/CheckIn";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminApprovals from "./pages/AdminApprovals";
+import PendingApproval from "./pages/PendingApproval";
 import LiveDashboard from "./pages/LiveDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -22,6 +24,8 @@ const App = () => (
           <Route path="/checkin" element={<CheckIn />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/approvals" element={<AdminApprovals />} />
+          <Route path="/admin/pending" element={<PendingApproval />} />
           <Route path="/event/:id/live" element={<LiveDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
