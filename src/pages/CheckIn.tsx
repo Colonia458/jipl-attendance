@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,14 @@ import { toast } from "sonner";
 import { CheckCircle2, ClipboardCheck, Loader2, AlertCircle, Pencil, MapPin, Clock } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import SignaturePad from "@/components/SignaturePad";
+
+// Always operate as anon — never inherits an active admin session from the shared client.
+// This ensures the 'anon' RLS INSERT policy on attendance_logs is always satisfied.
+const anonClient = createClient(
+  import.meta.env.VITE_SUPABASE_URL as string,
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+  { auth: { persistSession: false, autoRefreshToken: false, storageKey: "checkin-anon" } }
+);
 
 const STORAGE_KEY = "checkin_user_data";
 
@@ -74,7 +82,7 @@ const CheckIn = () => {
   useEffect(() => {
     if (!eventId) { setEventLoading(false); setEventError(true); return; }
     const fetchEvent = async () => {
-      const { data, error } = await supabase.from("events").select("title, venue, start_time, end_time, date").eq("id", eventId).single();
+      const { data, error } = await anonClient.from("events").select("title, venue, start_time, end_time, date").eq("id", eventId).single();
       if (error || !data) setEventError(true);
       else {
         setEventTitle(data.title);
@@ -109,7 +117,7 @@ const CheckIn = () => {
 
   const checkExisting = async (email: string) => {
     if (!eventId) return;
-    const { data } = await supabase
+    const { data } = await anonClient
       .from("attendance_logs")
       .select("id, full_name, email, phone_number, designation_department")
       .eq("event_id", eventId)
@@ -148,9 +156,9 @@ const CheckIn = () => {
       const blob = new Blob([ab], { type: "image/png" });
 
       const fileName = `${eventId}/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
-      const { error } = await supabase.storage.from("signatures").upload(fileName, blob, { contentType: "image/png" });
+      const { error } = await anonClient.storage.from("signatures").upload(fileName, blob, { contentType: "image/png" });
       if (error) { console.error("Signature upload error:", error); return null; }
-      const { data: urlData } = supabase.storage.from("signatures").getPublicUrl(fileName);
+      const { data: urlData } = anonClient.storage.from("signatures").getPublicUrl(fileName);
       return urlData.publicUrl;
     } catch (err) { console.error("Signature upload error:", err); return null; }
   };
@@ -181,11 +189,11 @@ const CheckIn = () => {
       if (sigUrl) fullPayload.signature_url = sigUrl;
 
       const tryInsert = async (payload: any) => {
-        const { error } = await supabase.from("attendance_logs").insert({ ...payload, event_id: eventId });
+        const { error } = await anonClient.from("attendance_logs").insert({ ...payload, event_id: eventId });
         return error;
       };
       const tryUpdate = async (payload: any, id: string) => {
-        const { error } = await supabase.from("attendance_logs").update(payload).eq("id", id);
+        const { error } = await anonClient.from("attendance_logs").update(payload).eq("id", id);
         return error;
       };
 
@@ -196,7 +204,7 @@ const CheckIn = () => {
         toast.success("Your details have been updated!");
         setIsEditing(false);
       } else {
-        const { data: existing } = await supabase
+        const { data: existing } = await anonClient
           .from("attendance_logs")
           .select("id")
           .eq("event_id", eventId!)
