@@ -139,8 +139,14 @@ const CheckIn = () => {
   const uploadSignature = async (): Promise<string | null> => {
     if (!signatureDataUrl || !eventId) return null;
     try {
-      const res = await fetch(signatureDataUrl);
-      const blob = await res.blob();
+      // Parse the data URL directly — more reliable than fetch() across all browsers
+      const [, base64] = signatureDataUrl.split(",");
+      const byteString = atob(base64);
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+      const blob = new Blob([ab], { type: "image/png" });
+
       const fileName = `${eventId}/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
       const { error } = await supabase.storage.from("signatures").upload(fileName, blob, { contentType: "image/png" });
       if (error) { console.error("Signature upload error:", error); return null; }
@@ -157,24 +163,36 @@ const CheckIn = () => {
 
     setLoading(true);
     try {
+      // Signature upload is best-effort — never blocks check-in
       let sigUrl: string | null = null;
-      if (signatureDataUrl) {
-        sigUrl = await uploadSignature();
-      }
+      try { if (signatureDataUrl) sigUrl = await uploadSignature(); } catch { /* ignore */ }
 
-      const payload: any = {
+      // Base payload uses columns that have always existed in the schema
+      const basePayload: any = {
         full_name: full_name.trim(),
         email: email.trim().toLowerCase(),
         phone_number: phone_number.trim(),
-        designation_department: designation_department.trim(),
         job_title: designation_department.trim(),
         company: designation_department.trim(),
       };
-      if (sigUrl) payload.signature_url = sigUrl;
+
+      // Extended payload includes optional columns added in later migrations
+      const fullPayload: any = { ...basePayload, designation_department: designation_department.trim() };
+      if (sigUrl) fullPayload.signature_url = sigUrl;
+
+      const tryInsert = async (payload: any) => {
+        const { error } = await supabase.from("attendance_logs").insert({ ...payload, event_id: eventId });
+        return error;
+      };
+      const tryUpdate = async (payload: any, id: string) => {
+        const { error } = await supabase.from("attendance_logs").update(payload).eq("id", id);
+        return error;
+      };
 
       if (isEditing && existingRecordId) {
-        const { error } = await supabase.from("attendance_logs").update(payload).eq("id", existingRecordId);
-        if (error) throw error;
+        let err = await tryUpdate(fullPayload, existingRecordId);
+        if (err) err = await tryUpdate(basePayload, existingRecordId);
+        if (err) throw err;
         toast.success("Your details have been updated!");
         setIsEditing(false);
       } else {
@@ -182,24 +200,30 @@ const CheckIn = () => {
           .from("attendance_logs")
           .select("id")
           .eq("event_id", eventId!)
-          .eq("email", payload.email)
+          .eq("email", basePayload.email)
           .maybeSingle();
 
         if (existing) {
           setExistingRecordId(existing.id);
-          const { error } = await supabase.from("attendance_logs").update(payload).eq("id", existing.id);
-          if (error) throw error;
+          let err = await tryUpdate(fullPayload, existing.id);
+          if (err) err = await tryUpdate(basePayload, existing.id);
+          if (err) throw err;
           toast.success("Your details have been updated!");
         } else {
-          const { error } = await supabase.from("attendance_logs").insert({ ...payload, event_id: eventId });
-          if (error) throw error;
+          let err = await tryInsert(fullPayload);
+          if (err) err = await tryInsert(basePayload);
+          if (err) throw err;
           toast.success("You're checked in!");
         }
       }
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ full_name: payload.full_name, email: payload.email, phone_number: payload.phone_number, designation_department: payload.designation_department }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ full_name: basePayload.full_name, email: basePayload.email, phone_number: basePayload.phone_number, designation_department: designation_department.trim() }));
       setCheckedIn(true);
-    } catch (err: any) { toast.error("Check-in failed. Please try again."); console.error(err); } finally { setLoading(false); }
+    } catch (err: any) {
+      const msg = err?.message || err?.details || "Please try again.";
+      toast.error(`Check-in failed: ${msg}`);
+      console.error("Check-in error:", err);
+    } finally { setLoading(false); }
   };
 
   if (eventLoading) return <div className="min-h-screen bg-background"><AppHeader /><div className="flex items-center justify-center p-4 pt-32"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div></div>;
