@@ -422,11 +422,16 @@ const AdminDashboard = () => {
         {!selectedEvent ? (
           isSuperAdmin ? (
             <Tabs defaultValue="events" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="events">Events</TabsTrigger>
-                <TabsTrigger value="admins">Manage Admins</TabsTrigger>
-                <TabsTrigger value="activity">Activity Log</TabsTrigger>
-              </TabsList>
+              <div className="flex items-center justify-between">
+                <TabsList>
+                  <TabsTrigger value="events">Events</TabsTrigger>
+                  <TabsTrigger value="admins">Manage Admins</TabsTrigger>
+                  <TabsTrigger value="activity">Activity Log</TabsTrigger>
+                </TabsList>
+                <Button variant="outline" size="sm" onClick={() => navigate("/admin/approvals")}>
+                  <ShieldCheck className="w-4 h-4 mr-2" />User Approvals
+                </Button>
+              </div>
               <TabsContent value="events">
                 <EventsListView
                   events={events}
