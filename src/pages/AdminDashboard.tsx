@@ -89,10 +89,6 @@ const AdminDashboard = () => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/admin"); return; }
-      // Check user approval status
-      const { data: userStatus } = await supabase.rpc("get_user_status", { _user_id: session.user.id });
-      if (userStatus === "pending") { navigate("/admin/pending"); return; }
-      if (userStatus === "rejected") { await supabase.auth.signOut(); navigate("/admin"); return; }
       // Check if super_admin
       const { data: hasRole } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "super_admin" });
       const isSA = !!hasRole;
@@ -422,16 +418,11 @@ const AdminDashboard = () => {
         {!selectedEvent ? (
           isSuperAdmin ? (
             <Tabs defaultValue="events" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <TabsList>
-                  <TabsTrigger value="events">Events</TabsTrigger>
-                  <TabsTrigger value="admins">Manage Admins</TabsTrigger>
-                  <TabsTrigger value="activity">Activity Log</TabsTrigger>
-                </TabsList>
-                <Button variant="outline" size="sm" onClick={() => navigate("/admin/approvals")}>
-                  <ShieldCheck className="w-4 h-4 mr-2" />User Approvals
-                </Button>
-              </div>
+              <TabsList>
+                <TabsTrigger value="events">Events</TabsTrigger>
+                <TabsTrigger value="admins">Manage Admins</TabsTrigger>
+                <TabsTrigger value="activity">Activity Log</TabsTrigger>
+              </TabsList>
               <TabsContent value="events">
                 <EventsListView
                   events={events}
