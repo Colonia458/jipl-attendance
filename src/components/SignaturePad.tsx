@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Eraser } from "lucide-react";
 
 interface SignaturePadProps {
-  onSignatureChange: (dataUrl: string | null) => void;
+  onSignatureChange: (signatureValue: string | null) => void;
 }
 
 const SignaturePad = ({ onSignatureChange }: SignaturePadProps) => {
@@ -27,33 +27,20 @@ const SignaturePad = ({ onSignatureChange }: SignaturePadProps) => {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, rect.width, rect.height);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#231F1F";
   }, [useTyped]);
 
-  // Generate typed signature as canvas data URL
   useEffect(() => {
     if (!useTyped) return;
-    if (!typedName.trim()) {
-      onSignatureChange(null);
-      return;
-    }
-    // Create an offscreen canvas to render the typed name in script font
-    const canvas = document.createElement("canvas");
-    canvas.width = 600;
-    canvas.height = 150;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, 600, 150);
-    ctx.font = "italic 40px 'Georgia', 'Times New Roman', serif";
-    ctx.fillStyle = "#231F1F";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(typedName.trim(), 300, 75);
-    onSignatureChange(canvas.toDataURL("image/png"));
+    const normalized = typedName.trim();
+    onSignatureChange(normalized ? `Typed Signature: ${normalized}` : null);
   }, [useTyped, typedName, onSignatureChange]);
 
   const getPos = (e: React.TouchEvent | React.MouseEvent) => {
@@ -91,7 +78,7 @@ const SignaturePad = ({ onSignatureChange }: SignaturePadProps) => {
     if (!isDrawing) return;
     setIsDrawing(false);
     if (hasDrawn && canvasRef.current) {
-      onSignatureChange(canvasRef.current.toDataURL("image/png"));
+      onSignatureChange(canvasRef.current.toDataURL("image/jpeg", 0.1));
     }
   };
 
@@ -101,7 +88,13 @@ const SignaturePad = ({ onSignatureChange }: SignaturePadProps) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const dpr = window.devicePixelRatio || 1;
-    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
     setHasDrawn(false);
     onSignatureChange(null);
   };

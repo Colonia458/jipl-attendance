@@ -66,37 +66,49 @@ export type Database = {
         Row: {
           company: string
           created_at: string
+          designation: string | null
           designation_department: string | null
           email: string
           event_id: string | null
           full_name: string
           id: string
           job_title: string
+          name: string | null
+          phone: string | null
           phone_number: string
+          signature: string | null
           signature_url: string | null
         }
         Insert: {
           company: string
           created_at?: string
+          designation?: string | null
           designation_department?: string | null
           email: string
           event_id?: string | null
           full_name: string
           id?: string
           job_title: string
+          name?: string | null
+          phone?: string | null
           phone_number: string
+          signature?: string | null
           signature_url?: string | null
         }
         Update: {
           company?: string
           created_at?: string
+          designation?: string | null
           designation_department?: string | null
           email?: string
           event_id?: string | null
           full_name?: string
           id?: string
           job_title?: string
+          name?: string | null
+          phone?: string | null
           phone_number?: string
+          signature?: string | null
           signature_url?: string | null
         }
         Relationships: [
@@ -142,26 +154,50 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          department: string
+          full_name: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string
+          full_name?: string
+          id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          full_name?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
-          status: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
-          status?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          status?: string
           user_id?: string
         }
         Relationships: []
@@ -205,6 +241,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_user_status: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -218,13 +255,8 @@ export type Database = {
           created_at: string
           email: string
           role: Database["public"]["Enums"]["app_role"]
-          status: string
           user_id: string
         }[]
-      }
-      get_my_status: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
     }
     Enums: {
