@@ -57,7 +57,9 @@ const CheckIn = () => {
   const eventId = searchParams.get("event");
 
   const [form, setForm] = useState<UserData>({ full_name: "", email: "", phone_number: "07", designation_department: "" });
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [signatureValue, setSignatureValue] = useState<string | null>(null);
+  const [signatureResetKey, setSignatureResetKey] = useState(0);
+  const [submittedName, setSubmittedName] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
   const [hasStored, setHasStored] = useState(false);
