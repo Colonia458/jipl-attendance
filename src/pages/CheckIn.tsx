@@ -138,94 +138,93 @@ const CheckIn = () => {
     setHasStored(false);
   };
 
-  const uploadSignature = async (): Promise<string | null> => {
-    if (!signatureDataUrl || !eventId) return null;
-    try {
-      // Parse the data URL directly — more reliable than fetch() across all browsers
-      const [, base64] = signatureDataUrl.split(",");
-      const byteString = atob(base64);
-      const ab = new ArrayBuffer(byteString.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-      const blob = new Blob([ab], { type: "image/png" });
-
-      const fileName = `${eventId}/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
-      const { error } = await supabase.storage.from("signatures").upload(fileName, blob, { contentType: "image/png" });
-      if (error) { console.error("Signature upload error:", error); return null; }
-      const { data: urlData } = supabase.storage.from("signatures").getPublicUrl(fileName);
-      return urlData.publicUrl;
-    } catch (err) { console.error("Signature upload error:", err); return null; }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { full_name, email, phone_number, designation_department } = form;
-    if (!full_name.trim() || !email.trim() || !phone_number.trim() || !designation_department.trim()) { toast.error("Please fill in all fields"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error("Please enter a valid email"); return; }
+    if (!full_name.trim() || !email.trim() || !phone_number.trim() || !designation_department.trim()) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid email");
+      return;
+    }
 
     setLoading(true);
     try {
-      // Signature upload is best-effort — never blocks check-in
-      let sigUrl: string | null = null;
-      try { if (signatureDataUrl) sigUrl = await uploadSignature(); } catch { /* ignore */ }
-
-      // Base payload uses columns that have always existed in the schema
-      const basePayload: any = {
+      const normalizedSignature = signatureValue?.trim() ? signatureValue.trim() : null;
+      const payload: any = {
         full_name: full_name.trim(),
         email: email.trim().toLowerCase(),
         phone_number: phone_number.trim(),
         job_title: designation_department.trim(),
         company: designation_department.trim(),
+        designation_department: designation_department.trim(),
+        name: full_name.trim(),
+        designation: designation_department.trim(),
+        phone: phone_number.trim(),
+        signature: normalizedSignature,
+        signature_url: normalizedSignature?.startsWith("data:image/") ? normalizedSignature : null,
       };
 
-      // Extended payload includes optional columns added in later migrations
-      const fullPayload: any = { ...basePayload, designation_department: designation_department.trim() };
-      if (sigUrl) fullPayload.signature_url = sigUrl;
-
-      const tryInsert = async (payload: any) => {
+      const tryInsert = async () => {
         const { error } = await supabase.from("attendance_logs").insert({ ...payload, event_id: eventId });
-        return error;
+        if (error) throw error;
       };
-      const tryUpdate = async (payload: any, id: string) => {
+
+      const tryUpdate = async (id: string) => {
         const { error } = await supabase.from("attendance_logs").update(payload).eq("id", id);
-        return error;
+        if (error) throw error;
       };
 
       if (isEditing && existingRecordId) {
-        let err = await tryUpdate(fullPayload, existingRecordId);
-        if (err) err = await tryUpdate(basePayload, existingRecordId);
-        if (err) throw err;
+        await tryUpdate(existingRecordId);
         toast.success("Your details have been updated!");
         setIsEditing(false);
       } else {
-        const { data: existing } = await supabase
+        const { data: existing, error: existingError } = await supabase
           .from("attendance_logs")
           .select("id")
           .eq("event_id", eventId!)
-          .eq("email", basePayload.email)
+          .eq("email", payload.email)
           .maybeSingle();
+
+        if (existingError) throw existingError;
 
         if (existing) {
           setExistingRecordId(existing.id);
-          let err = await tryUpdate(fullPayload, existing.id);
-          if (err) err = await tryUpdate(basePayload, existing.id);
-          if (err) throw err;
+          await tryUpdate(existing.id);
           toast.success("Your details have been updated!");
         } else {
-          let err = await tryInsert(fullPayload);
-          if (err) err = await tryInsert(basePayload);
-          if (err) throw err;
+          await tryInsert();
           toast.success("You're checked in!");
         }
       }
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ full_name: basePayload.full_name, email: basePayload.email, phone_number: basePayload.phone_number, designation_department: designation_department.trim() }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          full_name: payload.full_name,
+          email: payload.email,
+          phone_number: payload.phone_number,
+          designation_department: payload.designation_department,
+        }),
+      );
+
+      setSubmittedName(payload.full_name);
+      setForm({ full_name: "", email: "", phone_number: "07", designation_department: "" });
+      setSignatureValue(null);
+      setSignatureResetKey((prev) => prev + 1);
+      setHasStored(false);
       setCheckedIn(true);
     } catch (err: any) {
-      const msg = err?.message || err?.details || "Please try again.";
-      toast.error(`Check-in failed: ${msg}`);
-      console.error("Check-in error:", err);
-    } finally { setLoading(false); }
+      const details = [err?.message, err?.details, err?.hint, err?.code].filter(Boolean).join(" | ");
+      const rawError = details || (typeof err === "string" ? err : JSON.stringify(err));
+      toast.error(`Check-in failed: ${rawError}`);
+      console.error("Check-in error (raw):", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (eventLoading) return <div className="min-h-screen bg-background"><AppHeader /><div className="flex items-center justify-center p-4 pt-32"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div></div>;
