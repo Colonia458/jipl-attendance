@@ -303,7 +303,7 @@ const CheckIn = () => {
                 <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required disabled={isEditing} />
               </div>
               <div className="space-y-1.5">
-                <SignaturePad onSignatureChange={setSignatureDataUrl} />
+                <SignaturePad key={signatureResetKey} onSignatureChange={setSignatureValue} />
               </div>
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>) : isEditing ? "Update Details" : hasStored ? "Confirm Attendance" : "Check In"}
