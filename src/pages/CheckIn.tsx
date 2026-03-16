@@ -300,7 +300,7 @@ const CheckIn = () => {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required disabled={isEditing} />
+                <Input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} required />
               </div>
               <div className="space-y-1.5">
                 <SignaturePad key={signatureResetKey} onSignatureChange={setSignatureValue} />

@@ -1,0 +1,1 @@
+CREATE POLICY "allow_all_update_anon_auth" ON public.attendance_logs FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
